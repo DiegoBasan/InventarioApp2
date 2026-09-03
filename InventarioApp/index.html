@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventario - Automation Chihuahua</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -790,6 +789,25 @@
             margin-bottom: 6px;
         }
 
+        .project-checkboxes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--bg-tertiary);
+        }
+
+        .project-checkboxes label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
         .form-input, .form-select {
             width: 100%;
             padding: 10px 12px;
@@ -1014,6 +1032,7 @@
                             <div class="tab" data-project="ELK">ELK</div>
                             <div class="tab" data-project="MOOSE">MOOSE</div>
                             <div class="tab" data-project="INFURROW">INFURROW</div>
+                            <div class="tab" data-project="Spare">Spare</div>
                         </div>
 
                         <div class="table-wrapper">
@@ -1023,10 +1042,12 @@
                                         <th>ID</th>
                                         <th>Número de Parte</th>
                                         <th>Descripción</th>
+                                        <th>Categoría</th>
                                         <th>Cantidad</th>
                                         <th>Proyecto</th>
                                         <th>Equipo</th>
                                         <th>Marca</th>
+                                        <th>Lugar</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
@@ -1050,6 +1071,7 @@
                                 <option value="ELK">ELK</option>
                                 <option value="MOOSE">MOOSE</option>
                                 <option value="INFURROW">INFURROW</option>
+                                <option value="Spare">Spare</option>
                             </select>
                             <button class="btn btn-primary" onclick="performSearch()">Buscar</button>
                         </div>
@@ -1062,10 +1084,12 @@
                                     <tr>
                                         <th>Número de Parte</th>
                                         <th>Descripción</th>
+                                        <th>Categoría</th>
                                         <th>Cantidad</th>
                                         <th>Proyecto</th>
                                         <th>Equipo</th>
                                         <th>Marca</th>
+                                        <th>Lugar</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
@@ -1110,19 +1134,16 @@
                 <input type="text" class="form-input" id="inputDescripcion" placeholder="Ej: Sensor">
             </div>
             <div class="form-group">
+                <label class="form-label">Categoría / Tipo</label>
+                <input type="text" class="form-input" id="inputCategoria" placeholder="Ej: Sensor, Cilindro, Válvula...">
+            </div>
+            <div class="form-group">
                 <label class="form-label">Cantidad</label>
                 <input type="number" class="form-input" id="inputCantidad" placeholder="Cantidad" min="1">
             </div>
             <div class="form-group">
-                <label class="form-label">Proyecto</label>
-                <select class="form-select" id="inputProyecto">
-                    <option value="">Seleccionar proyecto</option>
-                    <option value="GECKO">GECKO</option>
-                    <option value="SCORPION">SCORPION</option>
-                    <option value="ELK">ELK</option>
-                    <option value="MOOSE">MOOSE</option>
-                    <option value="INFURROW">INFURROW</option>
-                </select>
+                <label class="form-label">Proyecto(s)</label>
+                <div class="project-checkboxes" id="inputProyectoGroup"></div>
             </div>
             <div class="form-group">
                 <label class="form-label">Equipo</label>
@@ -1131,6 +1152,10 @@
             <div class="form-group">
                 <label class="form-label">Marca</label>
                 <input type="text" class="form-input" id="inputMarca" placeholder="Ej: Keyence">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Lugar (Gaveta)</label>
+                <select class="form-select" id="inputLugar"></select>
             </div>
             <div class="modal-buttons">
                 <button class="btn-modal btn-modal-secondary" onclick="closeAddModal()">Cancelar</button>
@@ -1152,18 +1177,16 @@
                 <input type="text" class="form-input" id="editDescripcion">
             </div>
             <div class="form-group">
+                <label class="form-label">Categoría / Tipo</label>
+                <input type="text" class="form-input" id="editCategoria" placeholder="Ej: Sensor, Cilindro, Válvula...">
+            </div>
+            <div class="form-group">
                 <label class="form-label">Cantidad</label>
                 <input type="number" class="form-input" id="editCantidad" min="1">
             </div>
             <div class="form-group">
-                <label class="form-label">Proyecto</label>
-                <select class="form-select" id="editProyecto">
-                    <option value="GECKO">GECKO</option>
-                    <option value="SCORPION">SCORPION</option>
-                    <option value="ELK">ELK</option>
-                    <option value="MOOSE">MOOSE</option>
-                    <option value="INFURROW">INFURROW</option>
-                </select>
+                <label class="form-label">Proyecto(s)</label>
+                <div class="project-checkboxes" id="editProyectoGroup"></div>
             </div>
             <div class="form-group">
                 <label class="form-label">Equipo</label>
@@ -1172,6 +1195,10 @@
             <div class="form-group">
                 <label class="form-label">Marca</label>
                 <input type="text" class="form-input" id="editMarca">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Lugar (Gaveta)</label>
+                <select class="form-select" id="editLugar"></select>
             </div>
             <div class="modal-buttons">
                 <button class="btn-modal btn-modal-secondary" onclick="closeEditModal()">Cancelar</button>
@@ -1248,6 +1275,9 @@
         let selectedMaterialId = null;
         let chromeNative = null;
         let editingMaterialId = null;
+        let allLugares = [];
+
+        const PROYECTOS = ['GECKO', 'SCORPION', 'ELK', 'MOOSE', 'INFURROW', 'Spare'];
 
         const rolePermissions = {
             'Operador': { ver: true, agregar: false, editar: false, retirar: false, eliminar: false, usuarios: false },
@@ -1408,6 +1438,9 @@
                 const usuariosData = await chromeNative.ObtenerUsuarios();
                 allUsers = JSON.parse(usuariosData) || [];
 
+                const lugaresData = await chromeNative.ObtenerLugares();
+                allLugares = JSON.parse(lugaresData) || [];
+
                 loadMaterials();
                 loadHistory();
                 loadUsers();
@@ -1416,17 +1449,67 @@
             }
         }
 
+        // Proyecto se guarda como texto separado por comas (un material puede ser usado en varios proyectos).
+        function proyectosDe(material) {
+            const raw = material.Proyecto || material.proyecto || '';
+            return raw.split(',').map(p => p.trim()).filter(p => p.length > 0);
+        }
+
+        function renderProjectCheckboxes(containerId, seleccionados) {
+            const container = document.getElementById(containerId);
+            seleccionados = seleccionados || [];
+            container.innerHTML = PROYECTOS.map(p => `
+                <label>
+                    <input type="checkbox" value="${p}" ${seleccionados.includes(p) ? 'checked' : ''}>
+                    <span>${p}</span>
+                </label>
+            `).join('');
+        }
+
+        function getSelectedProjects(containerId) {
+            const checks = document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`);
+            return Array.from(checks).map(c => c.value);
+        }
+
+        async function renderLugarSelect(selectId, seleccionado) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = allLugares.map(l => `<option value="${l}">${l}</option>`).join('')
+                + '<option value="__nueva__">+ Agregar nueva gaveta...</option>';
+            if (seleccionado) select.value = seleccionado;
+
+            select.onchange = async () => {
+                if (select.value !== '__nueva__') return;
+                const nombre = prompt('Nombre de la nueva gaveta:');
+                if (!nombre || !nombre.trim()) {
+                    select.value = seleccionado || (allLugares[0] || '');
+                    return;
+                }
+                try {
+                    const resultado = await chromeNative.CrearLugar(nombre.trim());
+                    if (resultado.includes('OK')) {
+                        const lugaresData = await chromeNative.ObtenerLugares();
+                        allLugares = JSON.parse(lugaresData) || [];
+                        await renderLugarSelect(selectId, nombre.trim());
+                    } else {
+                        alert('Error: ' + resultado);
+                    }
+                } catch (e) {
+                    alert('Error: ' + e);
+                }
+            };
+        }
+
         function loadMaterials() {
             const tbody = document.getElementById('materialsBody');
             tbody.innerHTML = '';
 
             let materials = allMaterials;
             if (currentProject !== 'todos') {
-                materials = allMaterials.filter(m => (m.Proyecto || m.proyecto) === currentProject);
+                materials = allMaterials.filter(m => proyectosDe(m).includes(currentProject));
             }
 
             if (materials.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">No hay materiales</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">No hay materiales</td></tr>';
                 return;
             }
 
@@ -1436,10 +1519,12 @@
                 const id = material.Id || material.id;
                 const parte = material.NumeroParte || material.parte;
                 const desc = material.Descripcion || material.descripcion;
+                const cat = material.Categoria || material.categoria || '';
                 const cant = material.Cantidad || material.cantidad;
                 const proy = material.Proyecto || material.proyecto;
                 const eq = material.Equipo || material.equipo;
                 const marca = material.Marca || material.marca;
+                const lugar = material.Lugar || material.lugar || '';
 
                 let actionButtons = '';
                 if (perms.editar) {
@@ -1454,10 +1539,12 @@
                             <td>${id}</td>
                             <td><strong>${parte}</strong></td>
                             <td>${desc}</td>
+                            <td>${cat}</td>
                             <td><span class="quantity-badge">${cant}</span></td>
                             <td>${proy}</td>
                             <td>${eq}</td>
                             <td>${marca}</td>
+                            <td>${lugar}</td>
                             <td>
                                 <div class="action-buttons">${actionButtons}</div>
                             </td>
@@ -1485,13 +1572,21 @@
                 return;
             }
 
-            // Últimos 5 movimientos
-            const recent = historyData.slice(-5).reverse();
+            const etiquetasTipo = {
+                'Ingreso': 'Material Agregado',
+                'Retiro': 'Material Retirado',
+                'Edicion': 'Material Editado',
+                'Borrado': 'Material Eliminado'
+            };
+
+            // historyData ya viene ordenado del más reciente al más antiguo (ORDER BY Fecha DESC).
+            // Los últimos 5 son los primeros 5 elementos del arreglo.
+            const recent = historyData.slice(0, 5);
             container.innerHTML = '';
             recent.forEach(entry => {
-                const accion = entry.Accion || entry.Tipo || 'Desconocido';
-                const detalles = entry.Detalles || entry.NumeroParte || '';
-                const fecha = entry.Fecha || entry.Cambio || 'N/A';
+                const accion = etiquetasTipo[entry.Tipo] || entry.Tipo || 'Desconocido';
+                const detalles = entry.NumeroParte || '';
+                const fecha = entry.Fecha || 'N/A';
                 const usuario = entry.Usuario || 'Sistema';
 
                 const html = `
@@ -1506,12 +1601,12 @@
                 container.innerHTML += html;
             });
 
-            // Historial completo
+            // Historial completo (mismo orden, ya viene del más reciente al más antiguo)
             fullContainer.innerHTML = '';
-            historyData.reverse().forEach(entry => {
-                const accion = entry.Accion || entry.Tipo || 'Desconocido';
-                const detalles = entry.Detalles || entry.NumeroParte || '';
-                const fecha = entry.Fecha || entry.Cambio || 'N/A';
+            historyData.forEach(entry => {
+                const accion = etiquetasTipo[entry.Tipo] || entry.Tipo || 'Desconocido';
+                const detalles = entry.NumeroParte || '';
+                const fecha = entry.Fecha || 'N/A';
                 const usuario = entry.Usuario || 'Sistema';
 
                 const html = `
@@ -1529,6 +1624,8 @@
 
         // ===== MODALES =====
         function openAddModal() {
+            renderProjectCheckboxes('inputProyectoGroup', []);
+            renderLugarSelect('inputLugar', allLugares[0]);
             document.getElementById('addModal').classList.add('active');
         }
 
@@ -1543,10 +1640,12 @@
             editingMaterialId = id;
             document.getElementById('editNumeroParte').value = material.NumeroParte || material.parte;
             document.getElementById('editDescripcion').value = material.Descripcion || material.descripcion;
+            document.getElementById('editCategoria').value = material.Categoria || material.categoria || '';
             document.getElementById('editCantidad').value = material.Cantidad || material.cantidad;
-            document.getElementById('editProyecto').value = material.Proyecto || material.proyecto;
+            renderProjectCheckboxes('editProyectoGroup', proyectosDe(material));
             document.getElementById('editEquipo').value = material.Equipo || material.equipo;
             document.getElementById('editMarca').value = material.Marca || material.marca;
+            renderLugarSelect('editLugar', material.Lugar || material.lugar || allLugares[0]);
 
             document.getElementById('editModal').classList.add('active');
         }
@@ -1598,23 +1697,27 @@
         async function saveMaterial() {
             const numeroParte = document.getElementById('inputNumeroParte').value;
             const descripcion = document.getElementById('inputDescripcion').value;
+            const categoria = document.getElementById('inputCategoria').value;
             const cantidad = parseInt(document.getElementById('inputCantidad').value) || 0;
-            const proyecto = document.getElementById('inputProyecto').value;
+            const proyectos = getSelectedProjects('inputProyectoGroup');
             const equipo = document.getElementById('inputEquipo').value;
             const marca = document.getElementById('inputMarca').value;
+            const lugar = document.getElementById('inputLugar').value;
 
-            if (!numeroParte || !descripcion || cantidad <= 0 || !proyecto) {
-                alert('Completa todos los campos');
+            if (!numeroParte || !descripcion || cantidad <= 0 || proyectos.length === 0) {
+                alert('Completa todos los campos (selecciona al menos un proyecto)');
                 return;
             }
 
             if (chromeNative) {
                 try {
-                    const resultado = await chromeNative.AgregarMaterial(numeroParte, descripcion, cantidad, proyecto, equipo, marca, currentUser.nombre);
+                    const resultado = await chromeNative.AgregarMaterial(numeroParte, descripcion, cantidad, proyectos.join(', '), equipo, marca, categoria, lugar, currentUser.nombre);
                     if (resultado.includes('OK')) {
                         closeAddModal();
                         await loadData();
                         alert('Material agregado');
+                    } else {
+                        alert('Error: ' + resultado);
                     }
                 } catch (e) {
                     alert('Error: ' + e);
@@ -1626,19 +1729,21 @@
             if (!editingMaterialId) return;
 
             const descripcion = document.getElementById('editDescripcion').value;
+            const categoria = document.getElementById('editCategoria').value;
             const cantidad = parseInt(document.getElementById('editCantidad').value) || 0;
-            const proyecto = document.getElementById('editProyecto').value;
+            const proyectos = getSelectedProjects('editProyectoGroup');
             const equipo = document.getElementById('editEquipo').value;
             const marca = document.getElementById('editMarca').value;
+            const lugar = document.getElementById('editLugar').value;
 
-            if (!descripcion || cantidad <= 0 || !proyecto) {
-                alert('Completa todos los campos');
+            if (!descripcion || cantidad <= 0 || proyectos.length === 0) {
+                alert('Completa todos los campos (selecciona al menos un proyecto)');
                 return;
             }
 
             if (chromeNative) {
                 try {
-                    const resultado = await chromeNative.ActualizarMaterial(editingMaterialId, descripcion, cantidad, proyecto, equipo, marca, currentUser.nombre);
+                    const resultado = await chromeNative.ActualizarMaterial(editingMaterialId, descripcion, cantidad, proyectos.join(', '), equipo, marca, categoria, lugar, currentUser.nombre);
                     if (resultado.includes('OK')) {
                         closeEditModal();
                         await loadData();
@@ -1787,24 +1892,24 @@
             });
         });
 
-        function exportData() {
-            const ws_data = [['ID', 'Número de Parte', 'Descripción', 'Cantidad', 'Proyecto', 'Equipo', 'Marca']];
-            allMaterials.forEach(m => {
-                ws_data.push([
-                    m.Id || m.id,
-                    m.NumeroParte || m.parte,
-                    m.Descripcion || m.descripcion,
-                    m.Cantidad || m.cantidad,
-                    m.Proyecto || m.proyecto,
-                    m.Equipo || m.equipo,
-                    m.Marca || m.marca
-                ]);
-            });
-
-            const ws = XLSX.utils.aoa_to_sheet(ws_data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
-            XLSX.writeFile(wb, `inventario_${new Date().toISOString().split('T')[0]}.xlsx`);
+        // La exportación se hace del lado de C# (ClosedXML) para evitar depender de la
+        // descarga de archivos del navegador embebido, que WebView2 no maneja por defecto.
+        async function exportData() {
+            if (!chromeNative) {
+                alert('Exportar solo está disponible dentro de la aplicación.');
+                return;
+            }
+            try {
+                const resultado = await chromeNative.ExportarExcel();
+                if (resultado === 'CANCELADO') return;
+                if (resultado.startsWith('OK:')) {
+                    alert('Exportado correctamente a:\n' + resultado.substring(3));
+                } else {
+                    alert('Error al exportar: ' + resultado.replace('ERROR:', ''));
+                }
+            } catch (e) {
+                alert('Error al exportar: ' + e);
+            }
         }
 
         async function performSearch() {
@@ -1815,14 +1920,14 @@
             const results = allMaterials.filter(m => {
                 return (!parte || (m.NumeroParte || m.parte).toLowerCase().includes(parte)) &&
                     (!descripcion || (m.Descripcion || m.descripcion).toLowerCase().includes(descripcion)) &&
-                    (!proyecto || (m.Proyecto || m.proyecto) === proyecto);
+                    (!proyecto || proyectosDe(m).includes(proyecto));
             });
 
             const tbody = document.getElementById('searchTableBody');
             tbody.innerHTML = '';
 
             if (results.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Sin resultados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Sin resultados</td></tr>';
                 return;
             }
 
@@ -1832,10 +1937,12 @@
                         <tr>
                             <td>${m.NumeroParte || m.parte}</td>
                             <td>${m.Descripcion || m.descripcion}</td>
+                            <td>${m.Categoria || m.categoria || ''}</td>
                             <td><span class="quantity-badge">${m.Cantidad || m.cantidad}</span></td>
                             <td>${m.Proyecto || m.proyecto}</td>
                             <td>${m.Equipo || m.equipo}</td>
                             <td>${m.Marca || m.marca}</td>
+                            <td>${m.Lugar || m.lugar || ''}</td>
                             <td>
                                 <button class="btn-sm btn-edit" onclick="openEditModal(${id})">Editar</button>
                                 <button class="btn-sm btn-delete" onclick="deleteMaterial(${id}, '${m.NumeroParte || m.parte}')">Eliminar</button>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dapper;
@@ -24,6 +24,23 @@ namespace InventarioApp
             CrearTabla();
         }
 
+        private static bool ColumnaExiste(SqliteConnection db, string tabla, string columna)
+        {
+            var columnas = db.Query($"PRAGMA table_info({tabla})");
+            foreach (var col in columnas)
+            {
+                if (string.Equals((string)col.name, columna, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool TablaExiste(SqliteConnection db, string tabla)
+        {
+            return db.QueryFirstOrDefault<string>(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name = @Nombre", new { Nombre = tabla }) != null;
+        }
+
         public void CrearTabla()
         {
             using (var db = new SqliteConnection(connStr))
@@ -39,19 +56,55 @@ namespace InventarioApp
                     CREATE TABLE IF NOT EXISTS SCORPION (Id INTEGER PRIMARY KEY AUTOINCREMENT, Cantidad INTEGER NOT NULL, [Numero de Parte] TEXT UNIQUE NOT NULL, Marca TEXT NOT NULL, Descripcion TEXT NOT NULL, Comentarios TEXT, Equipos TEXT NOT NULL, Cambio TEXT NOT NULL);
                     CREATE TABLE IF NOT EXISTS MOOSE (Id INTEGER PRIMARY KEY AUTOINCREMENT, Cantidad INTEGER NOT NULL, [Numero de Parte] TEXT UNIQUE NOT NULL, Marca TEXT NOT NULL, Descripcion TEXT NOT NULL, Comentarios TEXT, Equipos TEXT NOT NULL, Cambio TEXT NOT NULL);
                     CREATE TABLE IF NOT EXISTS GECKO (Id INTEGER PRIMARY KEY AUTOINCREMENT, Cantidad INTEGER NOT NULL, [Numero de Parte] TEXT UNIQUE NOT NULL, Marca TEXT, Descripcion TEXT NOT NULL, Comentarios TEXT NOT NULL, Equipos TEXT NOT NULL, Cambio TEXT NOT NULL);
+                    CREATE TABLE IF NOT EXISTS Lugares (Id INTEGER PRIMARY KEY AUTOINCREMENT, Nombre TEXT UNIQUE NOT NULL);
                     PRAGMA foreign_keys = ON;
                 ");
+
+                // Columnas nuevas: Categoria (en Repuestos) y Lugar (en Asignaciones).
+                if (!ColumnaExiste(db, "Repuestos", "Categoria"))
+                    db.Execute("ALTER TABLE Repuestos ADD COLUMN Categoria TEXT");
+
+                if (!ColumnaExiste(db, "Asignaciones", "Lugar"))
+                    db.Execute("ALTER TABLE Asignaciones ADD COLUMN Lugar TEXT");
+
+                // Semilla de gavetas iniciales.
+                if (db.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM Lugares") == 0)
+                {
+                    db.Execute("INSERT INTO Lugares (Nombre) VALUES ('Gaveta1'), ('Gaveta ELK')");
+                }
             }
 
             CrearTablaUsuarios();
         }
+
+        // ===== LUGARES (GAVETAS) =====
+
+        public List<string> ObtenerLugares()
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                return db.Query<string>("SELECT Nombre FROM Lugares ORDER BY Nombre").ToList();
+            }
+        }
+
+        public void CrearLugar(string nombre)
+        {
+            if (string.IsNullOrWhiteSpace(nombre)) throw new Exception("El nombre de la gaveta no puede estar vacío.");
+
+            using (var db = new SqliteConnection(connStr))
+            {
+                db.Execute("INSERT OR IGNORE INTO Lugares (Nombre) VALUES (@Nombre)", new { Nombre = nombre.Trim() });
+            }
+        }
+
+        // ===== MATERIALES =====
 
         public List<Material> ObtenerTodosLosMateriales()
         {
             using (var db = new SqliteConnection(connStr))
             {
                 string sql = @"
-                    SELECT a.Id, r.NumeroParte, r.Descripcion, m.Nombre as Marca, a.Equipo, a.Proyecto, a.Cantidad, a.Cambio 
+                    SELECT a.Id, r.NumeroParte, r.Descripcion, r.Categoria, m.Nombre as Marca, a.Equipo, a.Proyecto, a.Lugar, a.Cantidad, a.Cambio
                     FROM Asignaciones a
                     JOIN Repuestos r ON a.RepuestoId = r.Id
                     LEFT JOIN Marcas m ON r.MarcaId = m.Id
@@ -59,6 +112,7 @@ namespace InventarioApp
                 return db.Query<Material>(sql).ToList();
             }
         }
+
         public void GuardarMaterialMultiplo(Material infoBase, string listaEquipos, string listaProyectos, string usuario)
         {
             using (var db = new SqliteConnection(connStr))
@@ -81,14 +135,19 @@ namespace InventarioApp
                         if (repuestoId == 0)
                         {
                             repuestoId = db.QuerySingle<int>(
-                                @"INSERT INTO Repuestos (NumeroParte, Descripcion, MarcaId) VALUES (@NP, @Desc, @Mid) RETURNING Id;",
-                                new { NP = infoBase.NumeroParte, Desc = infoBase.Descripcion, Mid = marcaId }, transaccion);
+                                @"INSERT INTO Repuestos (NumeroParte, Descripcion, MarcaId, Categoria) VALUES (@NP, @Desc, @Mid, @Cat) RETURNING Id;",
+                                new { NP = infoBase.NumeroParte, Desc = infoBase.Descripcion, Mid = marcaId, Cat = infoBase.Categoria }, transaccion);
+                        }
+                        else
+                        {
+                            db.Execute(@"UPDATE Repuestos SET Descripcion = @Desc, MarcaId = @Mid, Categoria = @Cat WHERE Id = @Id",
+                                new { Desc = infoBase.Descripcion, Mid = marcaId, Cat = infoBase.Categoria, Id = repuestoId }, transaccion);
                         }
 
                         string cambioText = $"{usuario}   {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
 
-                        db.Execute(@"INSERT INTO Asignaciones (RepuestoId, Equipo, Proyecto, Cantidad, Cambio) VALUES (@Rid, @Eq, @Pro, @Cant, @Cam)",
-                            new { Rid = repuestoId, Eq = listaEquipos, Pro = listaProyectos, Cant = infoBase.Cantidad, Cam = cambioText }, transaccion);
+                        db.Execute(@"INSERT INTO Asignaciones (RepuestoId, Equipo, Proyecto, Lugar, Cantidad, Cambio) VALUES (@Rid, @Eq, @Pro, @Lug, @Cant, @Cam)",
+                            new { Rid = repuestoId, Eq = listaEquipos, Pro = listaProyectos, Lug = infoBase.Lugar, Cant = infoBase.Cantidad, Cam = cambioText }, transaccion);
 
                         db.Execute(@"INSERT INTO Movimientos (RepuestoId, Cantidad, Fecha, Usuario, Tipo) VALUES (@Rid, @Cant, datetime('now'), @Usr, 'Ingreso')",
                             new { Rid = repuestoId, Cant = infoBase.Cantidad, Usr = usuario }, transaccion);
@@ -167,39 +226,49 @@ namespace InventarioApp
                     .ToDictionary(x => x.Key, x => x.Value);
             }
         }
-        // ===== EDITAR Y CREAR USUARIOS =====
 
-        public void ActualizarMaterial(int id, string descripcion, int cantidad, string proyecto, string equipo, string marca, string usuario)
+        public void ActualizarMaterial(int id, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario)
         {
             try
             {
                 using (var connection = new SqliteConnection(connStr))
                 {
                     connection.Open();
-
-                    string query = @"
-                UPDATE Asignaciones 
-                SET Equipo = @equipo, 
-                    Proyecto = @proyecto, 
-                    Cantidad = @cantidad,
-                    Cambio = @cambio
-                WHERE Id = @id
-            ";
-
-                    connection.Execute(query, new
+                    using (var trans = connection.BeginTransaction())
                     {
-                        id = id,
-                        equipo = equipo ?? "",
-                        proyecto = proyecto ?? "",
-                        cantidad = cantidad,
-                        cambio = $"{usuario}   {DateTime.Now:yyyy-MM-dd HH:mm:ss}"
-                    });
+                        var asignacion = connection.QueryFirstOrDefault<dynamic>("SELECT RepuestoId FROM Asignaciones WHERE Id = @Id", new { Id = id }, trans);
+                        if (asignacion == null) throw new Exception("Registro no encontrado.");
 
-                    connection.Execute(@"
-                INSERT INTO Movimientos (RepuestoId, Cantidad, Fecha, Usuario, Tipo) 
-                SELECT RepuestoId, @cantidad, datetime('now'), @usuario, 'Edicion'
-                FROM Asignaciones WHERE Id = @id
-            ", new { cantidad = cantidad, usuario = usuario, id = id });
+                        int repuestoId = (int)asignacion.RepuestoId;
+
+                        connection.Execute(@"
+                            UPDATE Asignaciones
+                            SET Equipo = @equipo,
+                                Proyecto = @proyecto,
+                                Lugar = @lugar,
+                                Cantidad = @cantidad,
+                                Cambio = @cambio
+                            WHERE Id = @id",
+                            new
+                            {
+                                id = id,
+                                equipo = equipo ?? "",
+                                proyecto = proyecto ?? "",
+                                lugar = lugar ?? "",
+                                cantidad = cantidad,
+                                cambio = $"{usuario}   {DateTime.Now:yyyy-MM-dd HH:mm:ss}"
+                            }, trans);
+
+                        connection.Execute(@"UPDATE Repuestos SET Descripcion = @descripcion, Categoria = @categoria WHERE Id = @id",
+                            new { descripcion = descripcion, categoria = categoria, id = repuestoId }, trans);
+
+                        connection.Execute(@"
+                            INSERT INTO Movimientos (RepuestoId, Cantidad, Fecha, Usuario, Tipo)
+                            VALUES (@RepuestoId, @cantidad, datetime('now'), @usuario, 'Edicion')",
+                            new { RepuestoId = repuestoId, cantidad = cantidad, usuario = usuario }, trans);
+
+                        trans.Commit();
+                    }
                 }
             }
             catch (Exception ex)
@@ -208,6 +277,8 @@ namespace InventarioApp
             }
         }
 
+        // ===== USUARIOS =====
+
         public void CrearTablaUsuarios()
         {
             try
@@ -215,6 +286,14 @@ namespace InventarioApp
                 using (var connection = new SqliteConnection(connStr))
                 {
                     connection.Open();
+
+                    // Migración: instalaciones previas crearon una tabla Usuarios con el esquema
+                    // antiguo (Usuario, Password). Si existe y no tiene la columna Nombre, se
+                    // renombra para no perder datos y se crea la tabla con el esquema correcto.
+                    if (TablaExiste(connection, "Usuarios") && !ColumnaExiste(connection, "Usuarios", "Nombre"))
+                    {
+                        connection.Execute("ALTER TABLE Usuarios RENAME TO Usuarios_Legacy");
+                    }
 
                     string createQuery = @"
                 CREATE TABLE IF NOT EXISTS Usuarios (
@@ -342,8 +421,10 @@ namespace InventarioApp
         public string NumeroParte { get; set; }
         public int Cantidad { get; set; }
         public string Descripcion { get; set; }
+        public string Categoria { get; set; }
         public string Proyecto { get; set; }
         public string Equipo { get; set; }
+        public string Lugar { get; set; }
         public string Cambio { get; set; }
         public string Marca { get; set; }
     }

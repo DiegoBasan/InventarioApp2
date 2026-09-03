@@ -79,6 +79,58 @@ namespace InventarioApp
             }
         }
 
+        public string EliminarLugar(string nombre)
+        {
+            try
+            {
+                SQL.EliminarLugar(nombre);
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string ObtenerCategorias()
+        {
+            try
+            {
+                var categorias = SQL.ObtenerCategorias();
+                return JsonSerializer.Serialize(categorias);
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string CrearCategoria(string nombre)
+        {
+            try
+            {
+                SQL.CrearCategoria(nombre);
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string EliminarCategoria(string nombre)
+        {
+            try
+            {
+                SQL.EliminarCategoria(nombre);
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
         public string AgregarMaterial(string numeroParte, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario)
         {
             try
@@ -163,6 +215,32 @@ namespace InventarioApp
             try
             {
                 SQL.CrearUsuario(nombre, contrasena, rol);
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string ActualizarUsuario(int id, string rol, bool activo)
+        {
+            try
+            {
+                SQL.ActualizarUsuario(id, rol, activo);
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string CambiarPasswordUsuario(int id, string nuevaContrasena)
+        {
+            try
+            {
+                SQL.CambiarPasswordUsuario(id, nuevaContrasena);
                 return "OK";
             }
             catch (Exception ex)

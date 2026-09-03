@@ -876,7 +876,7 @@
     <div class="login-screen" id="loginScreen">
         <div class="login-container">
             <div style="margin-bottom: 30px; display: flex; align-items: center; justify-content: center;">
-                <img src="C:\Users\4019461\Downloads\NEW INVENTORY SYSTEM\InventarioApp\InventarioApp\logo.png" alt="Logo" style="width: 270px; height: 60px;">
+                <img src="logo.png" alt="Logo" style="width: 270px; height: 60px;">
             </div>
             <div class="login-subtitle">Sistema de Inventario</div>
             <div class="login-form">
@@ -894,7 +894,7 @@
         <div class="sidebar scrollbar">
             <div class="logo-section">
                 <div style="margin-bottom: 30px; display: flex; align-items: center; justify-content: center;">
-                    <img src="C:\Users\4019461\Downloads\NEW INVENTORY SYSTEM\InventarioApp\InventarioApp\logo.png" alt="Logo" style="width: 200px; height: 40px; margin-top: 20px;">
+                    <img src="logo.png" alt="Logo" style="width: 200px; height: 40px; margin-top: 20px;">
                 </div>
             </div>
 
@@ -1268,24 +1268,18 @@
             if (window.chrome && window.chrome.webview) {
                 const bridge = window.chrome.webview.hostObjects.chrome;
                 try {
-                    // Aquí falta un método en C# para validar usuario
-                    // Por ahora usamos datos de prueba
-                    if (username === 'admin' && password === 'admin123') {
-                        currentUser = {
-                            nombre: 'Admin',
-                            rol: 'Ingeniero',
-                            inicial: 'A'
-                        };
-                    } else if (username === 'manuel' && password === '1234') {
-                        currentUser = {
-                            nombre: 'Manuel',
-                            rol: 'Tecnico',
-                            inicial: 'M'
-                        };
-                    } else {
-                        showLoginError('Usuario o contraseña incorrectos');
+                    const resultado = await bridge.ValidarUsuario(username, password);
+                    if (resultado.startsWith('ERROR')) {
+                        showLoginError(resultado.replace('ERROR:', ''));
                         return;
                     }
+
+                    const [id, nombre, rol] = resultado.split('|');
+                    currentUser = {
+                        nombre: nombre,
+                        rol: rol,
+                        inicial: nombre.charAt(0).toUpperCase()
+                    };
 
                     chromeNative = bridge;
                     await loadData();
@@ -1294,14 +1288,7 @@
                     showLoginError('Error de conexión: ' + e);
                 }
             } else {
-                // Modo de prueba sin BD
-                if (username === 'admin' && password === 'admin123') {
-                    currentUser = { nombre: 'Admin', rol: 'Ingeniero', inicial: 'A' };
-                } else {
-                    showLoginError('Usuario o contraseña incorrectos');
-                    return;
-                }
-                showApp();
+                showLoginError('No se pudo conectar con la base de datos.');
             }
         }
         // Tema oscuro
@@ -1341,10 +1328,9 @@
         function showApp() {
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('appContainer').classList.add('authenticated');
-            initTheme();  // ← AGREGAR ESTA LÍNEA
+            initTheme();
             updateUserUI();
             updatePermissions();
-            allUsers = [{ Nombre: 'Admin', Rol: 'Ingeniero', Activo: true }];
         }
 
         function doLogout() {
@@ -1418,6 +1404,9 @@
 
                 const historialData = await chromeNative.ObtenerHistorial();
                 historyData = JSON.parse(historialData) || [];
+
+                const usuariosData = await chromeNative.ObtenerUsuarios();
+                allUsers = JSON.parse(usuariosData) || [];
 
                 loadMaterials();
                 loadHistory();
@@ -1721,8 +1710,8 @@
                 try {
                     const resultado = await chromeNative.CrearUsuario(nombre, password, rol);
                     if (resultado.includes('OK')) {
-                        // Agregar a lista local
-                        allUsers.push({ Nombre: nombre, Rol: rol, Activo: true });
+                        const usuariosData = await chromeNative.ObtenerUsuarios();
+                        allUsers = JSON.parse(usuariosData) || [];
 
                         closeAddUserModal();
                         document.getElementById('newUserName').value = '';
@@ -1741,11 +1730,6 @@
 
         function loadUsers() {
             const container = document.getElementById('usersList');
-
-            // Inicializar con Admin por defecto
-            if (allUsers.length === 0) {
-                allUsers = [{ Nombre: 'Admin', Rol: 'Ingeniero', Activo: true }];
-            }
 
             if (allUsers.length === 0) {
                 container.innerHTML = '<div style="padding: 20px; text-align: center;">No hay usuarios registrados</div>';

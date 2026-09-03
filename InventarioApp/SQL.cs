@@ -1,33 +1,28 @@
-﻿//using System;
-//using System.Collections.Generic;
-//using System.Text;
-
-//namespace InventarioApp
-//{
-//    internal class SQL
-//    {
-//    }
-//}
-
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Configuration;
 
 namespace InventarioApp
 {
     public class SQL
     {
-        private string connStr = @"Data Source=\\mxchim2pho023\Users\SVGCHI_JDESAUTO\Documents\Base de datos\miDB.sqlite";
+        private readonly string connStr;
 
         public SQL()
         {
+            var config = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+                .Build();
+
+            connStr = config.GetConnectionString("InventarioDb")
+                ?? throw new InvalidOperationException("No se encontró la cadena de conexión 'InventarioDb' en appsettings.json.");
+
             CrearTabla();
         }
-        
-
 
         public void CrearTabla()
         {
@@ -44,10 +39,11 @@ namespace InventarioApp
                     CREATE TABLE IF NOT EXISTS SCORPION (Id INTEGER PRIMARY KEY AUTOINCREMENT, Cantidad INTEGER NOT NULL, [Numero de Parte] TEXT UNIQUE NOT NULL, Marca TEXT NOT NULL, Descripcion TEXT NOT NULL, Comentarios TEXT, Equipos TEXT NOT NULL, Cambio TEXT NOT NULL);
                     CREATE TABLE IF NOT EXISTS MOOSE (Id INTEGER PRIMARY KEY AUTOINCREMENT, Cantidad INTEGER NOT NULL, [Numero de Parte] TEXT UNIQUE NOT NULL, Marca TEXT NOT NULL, Descripcion TEXT NOT NULL, Comentarios TEXT, Equipos TEXT NOT NULL, Cambio TEXT NOT NULL);
                     CREATE TABLE IF NOT EXISTS GECKO (Id INTEGER PRIMARY KEY AUTOINCREMENT, Cantidad INTEGER NOT NULL, [Numero de Parte] TEXT UNIQUE NOT NULL, Marca TEXT, Descripcion TEXT NOT NULL, Comentarios TEXT NOT NULL, Equipos TEXT NOT NULL, Cambio TEXT NOT NULL);
-                    CREATE TABLE IF NOT EXISTS Usuarios (Usuario TEXT NOT NULL PRIMARY KEY, Password TEXT NOT NULL);
                     PRAGMA foreign_keys = ON;
                 ");
             }
+
+            CrearTablaUsuarios();
         }
 
         public List<Material> ObtenerTodosLosMateriales()
@@ -63,56 +59,6 @@ namespace InventarioApp
                 return db.Query<Material>(sql).ToList();
             }
         }
-        //public void ActualizarMaterial(int id, string descripcion, int cantidad, string proyecto, string equipo, string marca, string usuario)
-        //{
-        //    using (var db = new SqliteConnection(connStr))
-        //    {
-        //        db.Open();
-        //        using (var trans = db.BeginTransaction())
-        //        {
-        //            try
-        //            {
-        //                var asignacion = db.QueryFirstOrDefault<dynamic>("SELECT * FROM Asignaciones WHERE Id = @Id", new { Id = id }, trans);
-        //                if (asignacion == null) throw new Exception("Registro no encontrado.");
-
-        //                int cantidadAnterior = (int)asignacion.Cantidad;
-
-        //                // Actualizar la asignación
-        //                db.Execute(@"UPDATE Asignaciones SET Cantidad = @Cant, Equipo = @Eq, Proyecto = @Pro, Cambio = @Cam 
-        //                   WHERE Id = @Id",
-        //                    new
-        //                    {
-        //                        Cant = cantidad,
-        //                        Eq = equipo,
-        //                        Pro = proyecto,
-        //                        Id = id,
-        //                        Cam = $"{usuario}   {DateTime.Now:yyyy-MM-dd HH:mm:ss}"
-        //                    }, trans);
-
-        //                // Actualizar descripción y marca en Repuestos si es necesario
-        //                db.Execute(@"UPDATE Repuestos SET Descripcion = @Desc, MarcaId = (SELECT Id FROM Marcas WHERE Nombre = @Mar) 
-        //                   WHERE Id = @Rid",
-        //                    new { Desc = descripcion, Mar = marca, Rid = (int)asignacion.RepuestoId }, trans);
-
-        //                // Registrar el cambio en Movimientos si la cantidad cambió
-        //                if (cantidad != cantidadAnterior)
-        //                {
-        //                    int diferencia = cantidad - cantidadAnterior;
-        //                    db.Execute(@"INSERT INTO Movimientos (RepuestoId, Cantidad, Fecha, Usuario, Tipo) 
-        //                       VALUES (@Rid, @Cant, datetime('now'), @Usr, 'Ajuste')",
-        //                        new { Rid = (int)asignacion.RepuestoId, Cant = Math.Abs(diferencia), Usr = usuario }, trans);
-        //                }
-
-        //                trans.Commit();
-        //            }
-        //            catch
-        //            {
-        //                trans.Rollback();
-        //                throw;
-        //            }
-        //        }
-        //    }
-        //}
         public void GuardarMaterialMultiplo(Material infoBase, string listaEquipos, string listaProyectos, string usuario)
         {
             using (var db = new SqliteConnection(connStr))

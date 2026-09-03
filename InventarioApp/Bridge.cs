@@ -131,7 +131,7 @@ namespace InventarioApp
             }
         }
 
-        public string AgregarMaterial(string numeroParte, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario, bool autoGenerarNumeroParte)
+        public string AgregarMaterial(string numeroParte, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario, bool autoGenerarNumeroParte, bool alertaStockActiva, int stockMinimoPersonalizado)
         {
             try
             {
@@ -147,7 +147,9 @@ namespace InventarioApp
                     Cantidad = cantidad,
                     Marca = marca,
                     Categoria = categoria,
-                    Lugar = lugar
+                    Lugar = lugar,
+                    AlertaStockActiva = alertaStockActiva,
+                    StockMinimoPersonalizado = alertaStockActiva ? stockMinimoPersonalizado : (int?)null
                 };
                 SQL.GuardarMaterialMultiplo(material, equipo, proyecto, usuario);
                 return "OK:" + numeroParte;
@@ -170,11 +172,14 @@ namespace InventarioApp
             }
         }
 
-        public string ActualizarMaterialesLote(int[] ids, string proyecto, string categoria, string lugar, string usuario)
+        // WebView2 no puede marshalear un array nativo (int[]) por COM desde JS — falla con
+        // "Type mismatch (0x80020005)". Se recibe como JSON y se deserializa aquí.
+        public string ActualizarMaterialesLote(string idsJson, string proyecto, string categoria, string lugar, string usuario)
         {
             try
             {
-                SQL.ActualizarMaterialesLote(new System.Collections.Generic.List<int>(ids), proyecto, categoria, lugar, usuario);
+                var ids = JsonSerializer.Deserialize<System.Collections.Generic.List<int>>(idsJson);
+                SQL.ActualizarMaterialesLote(ids, proyecto, categoria, lugar, usuario);
                 return "OK";
             }
             catch (Exception ex)
@@ -245,11 +250,11 @@ namespace InventarioApp
             }
         }
 
-        public string ActualizarMaterial(int id, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario)
+        public string ActualizarMaterial(int id, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario, bool alertaStockActiva, int stockMinimoPersonalizado)
         {
             try
             {
-                SQL.ActualizarMaterial(id, descripcion, cantidad, proyecto, equipo, marca, categoria, lugar, usuario);
+                SQL.ActualizarMaterial(id, descripcion, cantidad, proyecto, equipo, marca, categoria, lugar, usuario, alertaStockActiva, alertaStockActiva ? stockMinimoPersonalizado : (int?)null);
                 return "OK";
             }
             catch (Exception ex)

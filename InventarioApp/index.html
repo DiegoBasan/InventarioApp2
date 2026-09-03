@@ -30,7 +30,7 @@
             --accent-orange-light: #fff3e0;
             --accent-red: #f44336;
             --accent-red-light: #ffebee;
-            --logo-filter: none;
+            --logo-color: var(--accent-blue);
             --scrollbar-thumb: #ccc;
             --scrollbar-thumb-hover: #999;
             --radius-sm: 8px;
@@ -53,7 +53,7 @@
             --accent-green-light: #1d5621;
             --accent-orange-light: #7c3e1c;
             --accent-red-light: #5c2323;
-            --logo-filter: brightness(0) invert(1);
+            --logo-color: #ffffff;
             --scrollbar-thumb: #373737;
             --scrollbar-thumb-hover: #4f4f4f;
         }
@@ -67,9 +67,19 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        .logo-icon img, .login-container img {
-            filter: var(--logo-filter);
-            transition: filter 0.3s;
+        /* Logo como máscara CSS: logo.svg puede traer cualquier color, aquí se repinta con
+           --logo-color (azul en modo claro, blanco en modo oscuro), sin depender del archivo. */
+        .logo-svg {
+            background-color: var(--logo-color);
+            -webkit-mask-image: url('logo.svg');
+            mask-image: url('logo.svg');
+            -webkit-mask-size: contain;
+            mask-size: contain;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+            transition: background-color 0.3s;
         }
         .theme-toggle {
             display: flex;
@@ -714,6 +724,23 @@
             color: var(--text-primary);
         }
 
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.15s;
+        }
+
+            th.sortable:hover {
+                color: var(--accent-blue);
+            }
+
+        .sort-indicator {
+            display: inline-block;
+            margin-left: 4px;
+            font-size: 10px;
+            color: var(--accent-blue);
+        }
+
         td {
             padding: 14px 16px;
             font-size: 13px;
@@ -937,7 +964,7 @@
     <div class="login-screen" id="loginScreen">
         <div class="login-container">
             <div style="margin-bottom: 30px; display: flex; align-items: center; justify-content: center;">
-                <img src="logo.png" alt="Logo" style="width: 270px; height: 60px;">
+                <div class="logo-svg" style="width: 270px; height: 60px;"></div>
             </div>
             <div class="login-subtitle">Sistema de Inventario</div>
             <div class="login-form">
@@ -955,7 +982,7 @@
         <div class="sidebar scrollbar">
             <div class="logo-section">
                 <div style="margin-bottom: 30px; display: flex; align-items: center; justify-content: center;">
-                    <img src="logo.png" alt="Logo" style="width: 200px; height: 40px; margin-top: 20px;">
+                    <div class="logo-svg" style="width: 200px; height: 40px; margin-top: 20px;"></div>
                 </div>
             </div>
 
@@ -1074,7 +1101,7 @@
                                 <div class="tab" data-project="ELK">ELK</div>
                                 <div class="tab" data-project="MOOSE">MOOSE</div>
                                 <div class="tab" data-project="INFURROW">INFURROW</div>
-                                <div class="tab" data-project="Spare">Spare</div>
+                                <div class="tab" data-project="SPARE">SPARE</div>
                             </div>
                             <button class="btn btn-primary" id="btnBulkToggle" onclick="toggleBulkMode()" style="margin: 6px 12px;">
                                 Editar en lote
@@ -1094,15 +1121,15 @@
                                 <thead>
                                     <tr>
                                         <th id="bulkTh" style="display: none;"><input type="checkbox" id="bulkSelectAll" onchange="toggleSelectAllBulk(this)"></th>
-                                        <th>ID</th>
-                                        <th>Número de Parte</th>
-                                        <th>Descripción</th>
-                                        <th>Categoría</th>
-                                        <th>Cantidad</th>
-                                        <th>Proyecto</th>
-                                        <th>Equipo</th>
-                                        <th>Marca</th>
-                                        <th>Lugar</th>
+                                        <th class="sortable" data-field="Id" onclick="sortMaterialsBy('Id')">ID<span class="sort-indicator"></span></th>
+                                        <th class="sortable" data-field="NumeroParte" onclick="sortMaterialsBy('NumeroParte')">Número de Parte<span class="sort-indicator"></span></th>
+                                        <th class="sortable" data-field="Descripcion" onclick="sortMaterialsBy('Descripcion')">Descripción<span class="sort-indicator"></span></th>
+                                        <th class="sortable" data-field="Categoria" onclick="sortMaterialsBy('Categoria')">Categoría<span class="sort-indicator"></span></th>
+                                        <th class="sortable" data-field="Cantidad" onclick="sortMaterialsBy('Cantidad')">Cantidad<span class="sort-indicator"></span></th>
+                                        <th class="sortable" data-field="Proyecto" onclick="sortMaterialsBy('Proyecto')">Proyecto<span class="sort-indicator"></span></th>
+                                        <th class="sortable" data-field="Equipo" onclick="sortMaterialsBy('Equipo')">Equipo<span class="sort-indicator"></span></th>
+                                        <th class="sortable" data-field="Marca" onclick="sortMaterialsBy('Marca')">Marca<span class="sort-indicator"></span></th>
+                                        <th class="sortable" data-field="Lugar" onclick="sortMaterialsBy('Lugar')">Lugar<span class="sort-indicator"></span></th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
@@ -1126,7 +1153,7 @@
                                 <option value="ELK">ELK</option>
                                 <option value="MOOSE">MOOSE</option>
                                 <option value="INFURROW">INFURROW</option>
-                                <option value="Spare">Spare</option>
+                                <option value="SPARE">SPARE</option>
                             </select>
                             <button class="btn btn-primary" onclick="performSearch()">Buscar</button>
                         </div>
@@ -1242,7 +1269,10 @@
                         <div class="card" style="margin: 16px 0;">
                             <div class="card-title">Alerta de stock bajo</div>
                             <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
-                                Los materiales con esta cantidad o menos se resaltan en rojo en la tabla de Inicio.
+                                La alerta de stock bajo se activa por material (en el modal de Agregar/Editar,
+                                con su propia cantidad mínima), no es igual para todos — un artículo del que
+                                normalmente se tiene 1 pieza no debería alertar igual que uno del que se tienen 50.
+                                Este valor solo se usa como sugerencia inicial al activar la alerta en un material nuevo.
                             </p>
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <input type="number" class="form-input" id="stockMinimoInput" min="0" style="max-width: 120px;">
@@ -1296,6 +1326,13 @@
                 <label class="form-label">Lugar (Gaveta)</label>
                 <select class="form-select" id="inputLugar"></select>
             </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="checkbox" id="inputAlertaStock" onchange="toggleStockMinInput('input')">
+                    Activar alerta de stock bajo para este material
+                </label>
+                <input type="number" class="form-input" id="inputStockMinimo" placeholder="Cantidad mínima" min="0" style="display: none; margin-top: 8px;">
+            </div>
             <div class="modal-buttons">
                 <button class="btn-modal btn-modal-secondary" onclick="closeAddModal()">Cancelar</button>
                 <button class="btn-modal btn-modal-primary" onclick="saveMaterial()">Guardar</button>
@@ -1338,6 +1375,13 @@
             <div class="form-group">
                 <label class="form-label">Lugar (Gaveta)</label>
                 <select class="form-select" id="editLugar"></select>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="checkbox" id="editAlertaStock" onchange="toggleStockMinInput('edit')">
+                    Activar alerta de stock bajo para este material
+                </label>
+                <input type="number" class="form-input" id="editStockMinimo" placeholder="Cantidad mínima" min="0" style="display: none; margin-top: 8px;">
             </div>
             <div class="modal-buttons">
                 <button class="btn-modal btn-modal-secondary" onclick="closeEditModal()">Cancelar</button>
@@ -1447,8 +1491,10 @@
         let bulkMode = false;
         let bulkSelectedIds = new Set();
         let stockMinimo = 5;
+        let sortColumn = null;
+        let sortDirection = 'asc';
 
-        const PROYECTOS = ['GECKO', 'SCORPION', 'ELK', 'MOOSE', 'INFURROW', 'Spare'];
+        const PROYECTOS = ['GECKO', 'SCORPION', 'ELK', 'MOOSE', 'INFURROW', 'SPARE'];
 
         const rolePermissions = {
             'Operador': { ver: true, agregar: false, editar: false, retirar: false, eliminar: false, usuarios: false },
@@ -1636,7 +1682,8 @@
         // Proyecto se guarda como texto separado por comas (un material puede ser usado en varios proyectos).
         function proyectosDe(material) {
             const raw = material.Proyecto || material.proyecto || '';
-            return raw.split(',').map(p => p.trim()).filter(p => p.length > 0);
+            // .toUpperCase() por compatibilidad con datos guardados antes de que "Spare" pasara a "SPARE".
+            return raw.split(',').map(p => p.trim().toUpperCase()).filter(p => p.length > 0);
         }
 
         function renderProjectCheckboxes(containerId, seleccionados) {
@@ -1704,6 +1751,27 @@
             return renderAddableSelect(selectId, allCategorias, seleccionado, 'Agregar nueva categoría...', nombre => chromeNative.CrearCategoria(nombre), refrescarCategorias);
         }
 
+        function sortMaterialsBy(field) {
+            if (sortColumn === field) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = field;
+                sortDirection = 'asc';
+            }
+            loadMaterials();
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll('#materialsTable th.sortable').forEach(th => {
+                const indicator = th.querySelector('.sort-indicator');
+                if (th.getAttribute('data-field') === sortColumn) {
+                    indicator.textContent = sortDirection === 'asc' ? '▲' : '▼';
+                } else {
+                    indicator.textContent = '';
+                }
+            });
+        }
+
         function loadMaterials() {
             const tbody = document.getElementById('materialsBody');
             tbody.innerHTML = '';
@@ -1712,6 +1780,18 @@
             if (currentProject !== 'todos') {
                 materials = allMaterials.filter(m => proyectosDe(m).includes(currentProject));
             }
+
+            if (sortColumn) {
+                materials = [...materials].sort((a, b) => {
+                    const va = a[sortColumn] ?? '';
+                    const vb = b[sortColumn] ?? '';
+                    const cmp = (typeof va === 'number' && typeof vb === 'number')
+                        ? va - vb
+                        : String(va).localeCompare(String(vb), 'es', { numeric: true, sensitivity: 'base' });
+                    return sortDirection === 'asc' ? cmp : -cmp;
+                });
+            }
+            updateSortIndicators();
 
             const colspan = bulkMode ? 11 : 10;
             if (materials.length === 0) {
@@ -1731,7 +1811,9 @@
                 const eq = material.Equipo || material.equipo;
                 const marca = material.Marca || material.marca;
                 const lugar = material.Lugar || material.lugar || '';
-                const stockBajo = cant <= stockMinimo;
+                const alertaActiva = !!(material.AlertaStockActiva || material.alertaStockActiva);
+                const minimoItem = material.StockMinimoPersonalizado ?? material.stockMinimoPersonalizado;
+                const stockBajo = alertaActiva && cant <= minimoItem;
 
                 let actionButtons = '';
                 if (perms.editar) {
@@ -1752,7 +1834,7 @@
                             <td><strong>${parte}</strong></td>
                             <td>${desc}</td>
                             <td>${cat}</td>
-                            <td><span class="quantity-badge ${stockBajo ? 'low-stock' : ''}" title="${stockBajo ? 'Stock bajo (mínimo: ' + stockMinimo + ')' : ''}">${cant}</span></td>
+                            <td><span class="quantity-badge ${stockBajo ? 'low-stock' : ''}" title="${stockBajo ? 'Stock bajo (mínimo: ' + minimoItem + ')' : ''}">${cant}</span></td>
                             <td>${proy}</td>
                             <td>${eq}</td>
                             <td>${marca}</td>
@@ -1842,7 +1924,7 @@
 
             try {
                 const ids = Array.from(bulkSelectedIds);
-                const resultado = await chromeNative.ActualizarMaterialesLote(ids, proyecto, categoria, lugar, currentUser.nombre);
+                const resultado = await chromeNative.ActualizarMaterialesLote(JSON.stringify(ids), proyecto, categoria, lugar, currentUser.nombre);
                 if (resultado.includes('OK')) {
                     closeBulkEditModal();
                     toggleBulkMode();
@@ -1960,6 +2042,13 @@
         }
 
         // ===== MODALES =====
+        function toggleStockMinInput(prefix) {
+            const activa = document.getElementById(`${prefix}AlertaStock`).checked;
+            const input = document.getElementById(`${prefix}StockMinimo`);
+            input.style.display = activa ? '' : 'none';
+            if (activa && !input.value) input.value = stockMinimo;
+        }
+
         function openAddModal() {
             renderProjectCheckboxes('inputProyectoGroup', []);
             renderLugarSelect('inputLugar', allLugares[0]);
@@ -1968,6 +2057,9 @@
             document.getElementById('inputNumeroParte').value = '';
             document.getElementById('inputNumeroParte').style.display = '';
             document.getElementById('autoNumeroPreview').style.display = 'none';
+            document.getElementById('inputAlertaStock').checked = false;
+            document.getElementById('inputStockMinimo').value = '';
+            document.getElementById('inputStockMinimo').style.display = 'none';
             document.getElementById('addModal').classList.add('active');
         }
 
@@ -1988,6 +2080,11 @@
             document.getElementById('editEquipo').value = material.Equipo || material.equipo;
             document.getElementById('editMarca').value = material.Marca || material.marca;
             renderLugarSelect('editLugar', material.Lugar || material.lugar || allLugares[0]);
+
+            const alertaActiva = !!(material.AlertaStockActiva || material.alertaStockActiva);
+            document.getElementById('editAlertaStock').checked = alertaActiva;
+            document.getElementById('editStockMinimo').style.display = alertaActiva ? '' : 'none';
+            document.getElementById('editStockMinimo').value = material.StockMinimoPersonalizado ?? material.stockMinimoPersonalizado ?? '';
 
             document.getElementById('editModal').classList.add('active');
         }
@@ -2072,15 +2169,21 @@
             const equipo = document.getElementById('inputEquipo').value;
             const marca = document.getElementById('inputMarca').value;
             const lugar = document.getElementById('inputLugar').value;
+            const alertaStock = document.getElementById('inputAlertaStock').checked;
+            const stockMin = parseInt(document.getElementById('inputStockMinimo').value) || 0;
 
             if ((!autoGenerar && !numeroParte) || !descripcion || cantidad <= 0 || proyectos.length === 0) {
                 alert('Completa todos los campos (selecciona al menos un proyecto)');
                 return;
             }
+            if (alertaStock && !document.getElementById('inputStockMinimo').value) {
+                alert('Ingresa la cantidad mínima para la alerta de stock.');
+                return;
+            }
 
             if (chromeNative) {
                 try {
-                    const resultado = await chromeNative.AgregarMaterial(numeroParte, descripcion, cantidad, proyectos.join(', '), equipo, marca, categoria, lugar, currentUser.nombre, autoGenerar);
+                    const resultado = await chromeNative.AgregarMaterial(numeroParte, descripcion, cantidad, proyectos.join(', '), equipo, marca, categoria, lugar, currentUser.nombre, autoGenerar, alertaStock, stockMin);
                     if (resultado.includes('OK')) {
                         closeAddModal();
                         await loadData();
@@ -2105,15 +2208,21 @@
             const equipo = document.getElementById('editEquipo').value;
             const marca = document.getElementById('editMarca').value;
             const lugar = document.getElementById('editLugar').value;
+            const alertaStock = document.getElementById('editAlertaStock').checked;
+            const stockMin = parseInt(document.getElementById('editStockMinimo').value) || 0;
 
             if (!descripcion || cantidad <= 0 || proyectos.length === 0) {
                 alert('Completa todos los campos (selecciona al menos un proyecto)');
                 return;
             }
+            if (alertaStock && !document.getElementById('editStockMinimo').value) {
+                alert('Ingresa la cantidad mínima para la alerta de stock.');
+                return;
+            }
 
             if (chromeNative) {
                 try {
-                    const resultado = await chromeNative.ActualizarMaterial(editingMaterialId, descripcion, cantidad, proyectos.join(', '), equipo, marca, categoria, lugar, currentUser.nombre);
+                    const resultado = await chromeNative.ActualizarMaterial(editingMaterialId, descripcion, cantidad, proyectos.join(', '), equipo, marca, categoria, lugar, currentUser.nombre, alertaStock, stockMin);
                     if (resultado.includes('OK')) {
                         closeEditModal();
                         await loadData();

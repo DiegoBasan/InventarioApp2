@@ -77,6 +77,14 @@ namespace InventarioApp
                 if (!ColumnaExiste(db, "Asignaciones", "Lugar"))
                     db.Execute("ALTER TABLE Asignaciones ADD COLUMN Lugar TEXT");
 
+                // Alerta de stock bajo por artículo: no todos los materiales manejan la misma
+                // cantidad "normal" (una cámara Keyence puede ser 1 de sobra, un tornillo no).
+                if (!ColumnaExiste(db, "Repuestos", "AlertaStockActiva"))
+                    db.Execute("ALTER TABLE Repuestos ADD COLUMN AlertaStockActiva INTEGER NOT NULL DEFAULT 0");
+
+                if (!ColumnaExiste(db, "Repuestos", "StockMinimoPersonalizado"))
+                    db.Execute("ALTER TABLE Repuestos ADD COLUMN StockMinimoPersonalizado INTEGER");
+
                 // Semilla de gavetas iniciales.
                 if (db.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM Lugares") == 0)
                 {
@@ -292,7 +300,8 @@ namespace InventarioApp
             using (var db = new SqliteConnection(connStr))
             {
                 string sql = @"
-                    SELECT a.Id, r.NumeroParte, r.Descripcion, r.Categoria, m.Nombre as Marca, a.Equipo, a.Proyecto, a.Lugar, a.Cantidad, a.Cambio
+                    SELECT a.Id, r.NumeroParte, r.Descripcion, r.Categoria, m.Nombre as Marca, a.Equipo, a.Proyecto, a.Lugar, a.Cantidad, a.Cambio,
+                           r.AlertaStockActiva, r.StockMinimoPersonalizado
                     FROM Asignaciones a
                     JOIN Repuestos r ON a.RepuestoId = r.Id
                     LEFT JOIN Marcas m ON r.MarcaId = m.Id
@@ -323,13 +332,16 @@ namespace InventarioApp
                         if (repuestoId == 0)
                         {
                             repuestoId = db.QuerySingle<int>(
-                                @"INSERT INTO Repuestos (NumeroParte, Descripcion, MarcaId, Categoria) VALUES (@NP, @Desc, @Mid, @Cat) RETURNING Id;",
-                                new { NP = infoBase.NumeroParte, Desc = infoBase.Descripcion, Mid = marcaId, Cat = infoBase.Categoria }, transaccion);
+                                @"INSERT INTO Repuestos (NumeroParte, Descripcion, MarcaId, Categoria, AlertaStockActiva, StockMinimoPersonalizado)
+                                  VALUES (@NP, @Desc, @Mid, @Cat, @Alerta, @StockMin) RETURNING Id;",
+                                new { NP = infoBase.NumeroParte, Desc = infoBase.Descripcion, Mid = marcaId, Cat = infoBase.Categoria, Alerta = infoBase.AlertaStockActiva, StockMin = infoBase.StockMinimoPersonalizado }, transaccion);
                         }
                         else
                         {
-                            db.Execute(@"UPDATE Repuestos SET Descripcion = @Desc, MarcaId = @Mid, Categoria = @Cat WHERE Id = @Id",
-                                new { Desc = infoBase.Descripcion, Mid = marcaId, Cat = infoBase.Categoria, Id = repuestoId }, transaccion);
+                            db.Execute(@"UPDATE Repuestos SET Descripcion = @Desc, MarcaId = @Mid, Categoria = @Cat,
+                                    AlertaStockActiva = @Alerta, StockMinimoPersonalizado = @StockMin
+                                WHERE Id = @Id",
+                                new { Desc = infoBase.Descripcion, Mid = marcaId, Cat = infoBase.Categoria, Alerta = infoBase.AlertaStockActiva, StockMin = infoBase.StockMinimoPersonalizado, Id = repuestoId }, transaccion);
                         }
 
                         string cambioText = $"{usuario}   {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
@@ -415,7 +427,7 @@ namespace InventarioApp
             }
         }
 
-        public void ActualizarMaterial(int id, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario)
+        public void ActualizarMaterial(int id, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario, bool alertaStockActiva, int? stockMinimoPersonalizado)
         {
             try
             {
@@ -447,8 +459,10 @@ namespace InventarioApp
                                 cambio = $"{usuario}   {DateTime.Now:yyyy-MM-dd HH:mm:ss}"
                             }, trans);
 
-                        connection.Execute(@"UPDATE Repuestos SET Descripcion = @descripcion, Categoria = @categoria WHERE Id = @id",
-                            new { descripcion = descripcion, categoria = categoria, id = repuestoId }, trans);
+                        connection.Execute(@"UPDATE Repuestos SET Descripcion = @descripcion, Categoria = @categoria,
+                                AlertaStockActiva = @alerta, StockMinimoPersonalizado = @stockMin
+                            WHERE Id = @id",
+                            new { descripcion = descripcion, categoria = categoria, alerta = alertaStockActiva, stockMin = stockMinimoPersonalizado, id = repuestoId }, trans);
 
                         connection.Execute(@"
                             INSERT INTO Movimientos (RepuestoId, Cantidad, Fecha, Usuario, Tipo)
@@ -651,6 +665,8 @@ namespace InventarioApp
         public string Lugar { get; set; }
         public string Cambio { get; set; }
         public string Marca { get; set; }
+        public bool AlertaStockActiva { get; set; }
+        public int? StockMinimoPersonalizado { get; set; }
     }
 
     public class HistorialMovimiento

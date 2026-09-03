@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -10,6 +11,7 @@ namespace InventarioApp
     public class SQL
     {
         private readonly string connStr;
+        private const int StockMinimoDefault = 5;
 
         public SQL()
         {
@@ -58,8 +60,15 @@ namespace InventarioApp
                     CREATE TABLE IF NOT EXISTS GECKO (Id INTEGER PRIMARY KEY AUTOINCREMENT, Cantidad INTEGER NOT NULL, [Numero de Parte] TEXT UNIQUE NOT NULL, Marca TEXT, Descripcion TEXT NOT NULL, Comentarios TEXT NOT NULL, Equipos TEXT NOT NULL, Cambio TEXT NOT NULL);
                     CREATE TABLE IF NOT EXISTS Lugares (Id INTEGER PRIMARY KEY AUTOINCREMENT, Nombre TEXT UNIQUE NOT NULL);
                     CREATE TABLE IF NOT EXISTS Categorias (Id INTEGER PRIMARY KEY AUTOINCREMENT, Nombre TEXT UNIQUE NOT NULL);
+                    CREATE TABLE IF NOT EXISTS Contadores (Id INTEGER PRIMARY KEY, Siguiente INTEGER NOT NULL);
+                    CREATE TABLE IF NOT EXISTS Config (Clave TEXT PRIMARY KEY, Valor TEXT);
                     PRAGMA foreign_keys = ON;
                 ");
+
+                if (db.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM Contadores WHERE Id = 1") == 0)
+                {
+                    db.Execute("INSERT INTO Contadores (Id, Siguiente) VALUES (1, 1)");
+                }
 
                 // Columnas nuevas: Categoria (en Repuestos) y Lugar (en Asignaciones).
                 if (!ColumnaExiste(db, "Repuestos", "Categoria"))
@@ -83,6 +92,141 @@ namespace InventarioApp
             }
 
             CrearTablaUsuarios();
+            RealizarRespaldo();
+        }
+
+        // ===== NÚMERO DE PARTE AUTOMÁTICO =====
+        // Formato: AUT-<Categoria abreviada>-<Proyecto abreviado>-#### (ej. AUT-SEN-GEC-0001)
+        // "MUL" se usa cuando el material aplica a más de un proyecto, "GEN" si no se eligió ninguno.
+        private static string AbreviarCategoria(string categoria)
+        {
+            if (string.IsNullOrWhiteSpace(categoria)) return "GEN";
+            var limpio = categoria.Trim().ToUpperInvariant();
+            return limpio.Length <= 3 ? limpio : limpio.Substring(0, 3);
+        }
+
+        private static string AbreviarProyectos(string proyectos)
+        {
+            var lista = (proyectos ?? "").Split(',').Select(p => p.Trim()).Where(p => p.Length > 0).ToList();
+            if (lista.Count == 0) return "GEN";
+            if (lista.Count > 1) return "MUL";
+            var unico = lista[0].ToUpperInvariant();
+            return unico.Length <= 3 ? unico : unico.Substring(0, 3);
+        }
+
+        // consumir:false = solo vista previa (no gasta el siguiente número).
+        // consumir:true  = reserva el número atómicamente (usado al guardar).
+        public string GenerarNumeroParte(string categoria, string proyectos, bool consumir)
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                int siguiente;
+                if (consumir)
+                {
+                    db.Open();
+                    using (var trans = db.BeginTransaction())
+                    {
+                        siguiente = db.QuerySingle<int>("SELECT Siguiente FROM Contadores WHERE Id = 1", transaction: trans);
+                        db.Execute("UPDATE Contadores SET Siguiente = Siguiente + 1 WHERE Id = 1", transaction: trans);
+                        trans.Commit();
+                    }
+                }
+                else
+                {
+                    siguiente = db.QuerySingle<int>("SELECT Siguiente FROM Contadores WHERE Id = 1");
+                }
+
+                return $"AUT-{AbreviarCategoria(categoria)}-{AbreviarProyectos(proyectos)}-{siguiente:0000}";
+            }
+        }
+
+        // ===== EDICIÓN EN LOTE (corrección masiva de datos ya ingresados) =====
+        public void ActualizarMaterialesLote(List<int> asignacionIds, string proyecto, string categoria, string lugar, string usuario)
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                db.Open();
+                using (var trans = db.BeginTransaction())
+                {
+                    foreach (var id in asignacionIds)
+                    {
+                        var asignacion = db.QueryFirstOrDefault<dynamic>("SELECT RepuestoId, Cantidad FROM Asignaciones WHERE Id = @Id", new { Id = id }, trans);
+                        if (asignacion == null) continue;
+
+                        if (!string.IsNullOrEmpty(proyecto) || !string.IsNullOrEmpty(lugar))
+                        {
+                            db.Execute(@"UPDATE Asignaciones SET
+                                    Proyecto = COALESCE(NULLIF(@proyecto, ''), Proyecto),
+                                    Lugar = COALESCE(NULLIF(@lugar, ''), Lugar)
+                                WHERE Id = @id",
+                                new { proyecto = proyecto ?? "", lugar = lugar ?? "", id = id }, trans);
+                        }
+
+                        if (!string.IsNullOrEmpty(categoria))
+                        {
+                            db.Execute("UPDATE Repuestos SET Categoria = @categoria WHERE Id = @rid",
+                                new { categoria = categoria, rid = (int)asignacion.RepuestoId }, trans);
+                        }
+
+                        db.Execute(@"INSERT INTO Movimientos (RepuestoId, Cantidad, Fecha, Usuario, Tipo)
+                            VALUES (@rid, @cant, datetime('now'), @usuario, 'Edicion')",
+                            new { rid = (int)asignacion.RepuestoId, cant = (int)asignacion.Cantidad, usuario = usuario }, trans);
+                    }
+                    trans.Commit();
+                }
+            }
+        }
+
+        // ===== STOCK MÍNIMO (alertas) =====
+        public int ObtenerStockMinimo()
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                var valor = db.QueryFirstOrDefault<string>("SELECT Valor FROM Config WHERE Clave = 'StockMinimo'");
+                return int.TryParse(valor, out var n) ? n : StockMinimoDefault;
+            }
+        }
+
+        public void GuardarStockMinimo(int valor)
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                db.Execute("INSERT INTO Config (Clave, Valor) VALUES ('StockMinimo', @v) ON CONFLICT(Clave) DO UPDATE SET Valor = @v",
+                    new { v = valor.ToString() });
+            }
+        }
+
+        // ===== RESPALDO AUTOMÁTICO =====
+        // Copia el archivo .sqlite (con fecha) una vez al día a una carpeta "Backups" junto a la
+        // base de datos, y borra copias de más de 30 días. Nunca debe tumbar el arranque de la app.
+        public void RealizarRespaldo()
+        {
+            try
+            {
+                var builder = new SqliteConnectionStringBuilder(connStr);
+                string dbPath = builder.DataSource;
+                if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath)) return;
+
+                string carpetaBackups = Path.Combine(Path.GetDirectoryName(dbPath) ?? ".", "Backups");
+                Directory.CreateDirectory(carpetaBackups);
+
+                string destino = Path.Combine(carpetaBackups, $"{Path.GetFileNameWithoutExtension(dbPath)}_{DateTime.Now:yyyy-MM-dd}.sqlite");
+                if (!File.Exists(destino))
+                {
+                    File.Copy(dbPath, destino);
+                }
+
+                foreach (var archivo in Directory.GetFiles(carpetaBackups, "*.sqlite"))
+                {
+                    if (File.GetCreationTime(archivo) < DateTime.Now.AddDays(-30))
+                        File.Delete(archivo);
+                }
+            }
+            catch
+            {
+                // El respaldo es una conveniencia; un fallo aquí (permisos, red caída, etc.)
+                // nunca debe impedir que la aplicación arranque.
+            }
         }
 
         // ===== LUGARES (GAVETAS) =====

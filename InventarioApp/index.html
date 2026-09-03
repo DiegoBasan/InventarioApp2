@@ -477,9 +477,18 @@
                 transform: translateY(-1px);
             }
 
-        .action-add { border-color: color-mix(in srgb, var(--accent-green) 35%, transparent); }
-        .action-remove { border-color: color-mix(in srgb, var(--accent-orange) 35%, transparent); }
-        .action-edit { border-color: color-mix(in srgb, var(--accent-blue) 35%, transparent); }
+        .action-add {
+            background-color: var(--accent-green-light);
+            border-color: color-mix(in srgb, var(--accent-green) 35%, transparent);
+        }
+        .action-remove {
+            background-color: var(--accent-orange-light);
+            border-color: color-mix(in srgb, var(--accent-orange) 35%, transparent);
+        }
+        .action-edit {
+            background-color: var(--accent-blue-light);
+            border-color: color-mix(in srgb, var(--accent-blue) 35%, transparent);
+        }
 
         /* Dropdown Usuario */
         .user-dropdown {
@@ -732,6 +741,10 @@
             border-radius: 16px;
             font-weight: 600;
             font-size: 12px;
+        }
+
+        .quantity-badge.low-stock {
+            background-color: var(--accent-red);
         }
 
         .action-buttons {
@@ -1053,20 +1066,34 @@
 
                     <!-- TABLA -->
                     <div class="table-section">
-                        <div class="table-tabs" id="projectTabs">
-                            <div class="tab active" data-project="todos">Todos</div>
-                            <div class="tab" data-project="GECKO">GECKO</div>
-                            <div class="tab" data-project="SCORPION">SCORPION</div>
-                            <div class="tab" data-project="ELK">ELK</div>
-                            <div class="tab" data-project="MOOSE">MOOSE</div>
-                            <div class="tab" data-project="INFURROW">INFURROW</div>
-                            <div class="tab" data-project="Spare">Spare</div>
+                        <div class="table-tabs" id="projectTabs" style="justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                            <div style="display: flex;">
+                                <div class="tab active" data-project="todos">Todos</div>
+                                <div class="tab" data-project="GECKO">GECKO</div>
+                                <div class="tab" data-project="SCORPION">SCORPION</div>
+                                <div class="tab" data-project="ELK">ELK</div>
+                                <div class="tab" data-project="MOOSE">MOOSE</div>
+                                <div class="tab" data-project="INFURROW">INFURROW</div>
+                                <div class="tab" data-project="Spare">Spare</div>
+                            </div>
+                            <button class="btn btn-primary" id="btnBulkToggle" onclick="toggleBulkMode()" style="margin: 6px 12px;">
+                                Editar en lote
+                            </button>
+                        </div>
+
+                        <div id="bulkBar" style="display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px; background-color: var(--accent-blue-light); border-bottom: 1px solid var(--border-color);">
+                            <span id="bulkCount" style="font-size: 13px; font-weight: 600; color: var(--accent-blue);">0 seleccionados</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-modal btn-modal-secondary" onclick="cancelBulkMode()">Cancelar</button>
+                                <button class="btn-modal btn-modal-primary" onclick="openBulkEditModal()">Aplicar cambios</button>
+                            </div>
                         </div>
 
                         <div class="table-wrapper">
                             <table id="materialsTable">
                                 <thead>
                                     <tr>
+                                        <th id="bulkTh" style="display: none;"><input type="checkbox" id="bulkSelectAll" onchange="toggleSelectAllBulk(this)"></th>
                                         <th>ID</th>
                                         <th>Número de Parte</th>
                                         <th>Descripción</th>
@@ -1130,6 +1157,30 @@
                 <!-- HISTORIAL -->
                 <div id="historial" class="section">
                     <h1 class="page-title">Historial Completo</h1>
+
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="card-title">Top 5 materiales más retirados</div>
+                        <canvas id="reportesChart" height="90"></canvas>
+                        <div id="reportesEmpty" style="display: none; padding: 20px; text-align: center; color: var(--text-tertiary);">Sin datos suficientes todavía</div>
+                    </div>
+
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="card-title">Filtrar historial</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 12px;">
+                            <input type="date" class="form-input" id="histDesde">
+                            <input type="date" class="form-input" id="histHasta">
+                            <select class="form-select" id="histUsuario"><option value="">Todos los usuarios</option></select>
+                            <select class="form-select" id="histTipo">
+                                <option value="">Todos los tipos</option>
+                                <option value="Ingreso">Ingreso</option>
+                                <option value="Retiro">Retiro</option>
+                                <option value="Edicion">Edición</option>
+                                <option value="Borrado">Borrado</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="applyHistoryFilter()">Filtrar</button>
+                        </div>
+                    </div>
+
                     <div class="card" id="historialList"></div>
                 </div>
 
@@ -1142,6 +1193,7 @@
                             <div class="tab config-tab active" data-config="usuarios-cfg">Usuarios</div>
                             <div class="tab config-tab" data-config="categorias-cfg">Categorías</div>
                             <div class="tab config-tab" data-config="gavetas-cfg">Gavetas</div>
+                            <div class="tab config-tab" data-config="general-cfg">General</div>
                         </div>
                     </div>
 
@@ -1184,6 +1236,20 @@
                             <div id="gavetasList" style="min-height: 100px;"></div>
                         </div>
                     </div>
+
+                    <!-- GENERAL -->
+                    <div id="general-cfg" class="config-panel">
+                        <div class="card" style="margin: 16px 0;">
+                            <div class="card-title">Alerta de stock bajo</div>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                                Los materiales con esta cantidad o menos se resaltan en rojo en la tabla de Inicio.
+                            </p>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <input type="number" class="form-input" id="stockMinimoInput" min="0" style="max-width: 120px;">
+                                <button class="btn btn-primary" onclick="saveStockMinimo()">Guardar</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1196,6 +1262,11 @@
             <div class="form-group">
                 <label class="form-label">Número de Parte</label>
                 <input type="text" class="form-input" id="inputNumeroParte" placeholder="Ej: 5463453">
+                <label style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); cursor: pointer;">
+                    <input type="checkbox" id="inputSinNumeroParte" onchange="toggleAutoNumeroParte()">
+                    Sin número de parte (generar uno interno de Automation)
+                </label>
+                <div id="autoNumeroPreview" style="display: none; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--accent-blue);"></div>
             </div>
             <div class="form-group">
                 <label class="form-label">Descripción</label>
@@ -1275,6 +1346,33 @@
         </div>
     </div>
 
+    <!-- MODAL EDITAR EN LOTE -->
+    <div id="bulkEditModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Editar en lote</div>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                Los campos que dejes en "No cambiar" no se tocan. Útil para corregir datos ya
+                ingresados sin tener que editar material por material.
+            </p>
+            <div class="form-group">
+                <label class="form-label">Categoría</label>
+                <select class="form-select" id="bulkCategoria"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Proyecto</label>
+                <select class="form-select" id="bulkProyecto"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Lugar (Gaveta)</label>
+                <select class="form-select" id="bulkLugar"></select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal btn-modal-secondary" onclick="closeBulkEditModal()">Cancelar</button>
+                <button class="btn-modal btn-modal-primary" onclick="applyBulkEdit()">Aplicar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL RETIRAR -->
     <div id="removeModal" class="modal">
         <div class="modal-content">
@@ -1346,6 +1444,9 @@
         let allLugares = [];
         let allCategorias = [];
         let currentConfigTab = 'usuarios-cfg';
+        let bulkMode = false;
+        let bulkSelectedIds = new Set();
+        let stockMinimo = 5;
 
         const PROYECTOS = ['GECKO', 'SCORPION', 'ELK', 'MOOSE', 'INFURROW', 'Spare'];
 
@@ -1471,12 +1572,18 @@
             document.getElementById('btnAgregarCard').style.display = perms.agregar ? '' : 'none';
             document.getElementById('btnRetirarCard').style.display = perms.retirar ? '' : 'none';
             document.getElementById('btnEditarCard').style.display = perms.editar ? '' : 'none';
+            document.getElementById('btnBulkToggle').style.display = perms.editar ? '' : 'none';
 
             // Nav configuración (solo ingeniero)
             document.getElementById('navConfiguracion').style.display = perms.usuarios ? '' : 'none';
 
             // Botones en tabla
             updateTableButtons();
+        }
+
+        // Eliminar es destructivo e irreversible: además del rol, se restringe al usuario Admin.
+        function esAdmin() {
+            return !!currentUser && currentUser.nombre.toLowerCase() === 'admin';
         }
 
         function updateTableButtons() {
@@ -1489,7 +1596,7 @@
                     const editBtn = buttons.querySelector('.btn-edit');
                     const deleteBtn = buttons.querySelector('.btn-delete');
                     if (editBtn) editBtn.style.display = perms.editar ? '' : 'none';
-                    if (deleteBtn) deleteBtn.style.display = perms.eliminar ? '' : 'none';
+                    if (deleteBtn) deleteBtn.style.display = (perms.eliminar && esAdmin()) ? '' : 'none';
                 }
             });
         }
@@ -1510,12 +1617,17 @@
 
                 await refrescarLugares();
                 await refrescarCategorias();
+                stockMinimo = await chromeNative.ObtenerStockMinimo();
 
                 loadMaterials();
                 loadHistory();
                 loadUsers();
                 loadCategoriasConfig();
                 loadGavetasConfig();
+                loadReportes();
+
+                const stockInput = document.getElementById('stockMinimoInput');
+                if (stockInput) stockInput.value = stockMinimo;
             } catch (e) {
                 console.error('Error cargando datos:', e);
             }
@@ -1601,8 +1713,9 @@
                 materials = allMaterials.filter(m => proyectosDe(m).includes(currentProject));
             }
 
+            const colspan = bulkMode ? 11 : 10;
             if (materials.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">No hay materiales</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align: center; padding: 20px;">No hay materiales</td></tr>`;
                 return;
             }
 
@@ -1618,22 +1731,28 @@
                 const eq = material.Equipo || material.equipo;
                 const marca = material.Marca || material.marca;
                 const lugar = material.Lugar || material.lugar || '';
+                const stockBajo = cant <= stockMinimo;
 
                 let actionButtons = '';
                 if (perms.editar) {
                     actionButtons += `<button class="btn-sm btn-edit" onclick="openEditModal(${id})">Editar</button>`;
                 }
-                if (perms.eliminar) {
+                if (perms.eliminar && esAdmin()) {
                     actionButtons += `<button class="btn-sm btn-delete" onclick="deleteMaterial(${id}, '${parte}')">Eliminar</button>`;
                 }
 
+                const checkboxTd = bulkMode
+                    ? `<td onclick="event.stopPropagation()"><input type="checkbox" class="bulk-checkbox" data-id="${id}" ${bulkSelectedIds.has(id) ? 'checked' : ''} onchange="toggleBulkSelection(${id}, this.checked)"></td>`
+                    : '';
+
                 const row = `
-                        <tr onclick="selectRow(this, ${id})">
+                        <tr onclick="selectRow(this, ${id})" class="${bulkSelectedIds.has(id) ? 'selected' : ''}">
+                            ${checkboxTd}
                             <td>${id}</td>
                             <td><strong>${parte}</strong></td>
                             <td>${desc}</td>
                             <td>${cat}</td>
-                            <td><span class="quantity-badge">${cant}</span></td>
+                            <td><span class="quantity-badge ${stockBajo ? 'low-stock' : ''}" title="${stockBajo ? 'Stock bajo (mínimo: ' + stockMinimo + ')' : ''}">${cant}</span></td>
                             <td>${proy}</td>
                             <td>${eq}</td>
                             <td>${marca}</td>
@@ -1650,69 +1769,194 @@
         }
 
         function selectRow(row, id) {
+            if (bulkMode) return;
             document.querySelectorAll('#materialsBody tr').forEach(r => r.classList.remove('selected'));
             row.classList.add('selected');
             selectedMaterialId = id;
         }
 
-        function loadHistory() {
-            const container = document.getElementById('movementHistoryContainer');
-            const fullContainer = document.getElementById('historialList');
+        // ===== EDICIÓN EN LOTE (temporal, para corregir datos ya ingresados) =====
+        function toggleBulkMode() {
+            bulkMode = !bulkMode;
+            bulkSelectedIds.clear();
+            document.getElementById('bulkTh').style.display = bulkMode ? '' : 'none';
+            document.getElementById('bulkBar').style.display = bulkMode ? 'flex' : 'none';
+            document.getElementById('btnBulkToggle').textContent = bulkMode ? 'Salir del modo lote' : 'Editar en lote';
+            document.getElementById('bulkSelectAll').checked = false;
+            updateBulkCount();
+            loadMaterials();
+        }
 
-            if (historyData.length === 0) {
-                container.innerHTML = '<div style="padding: 20px; text-align: center;">Sin movimientos</div>';
-                fullContainer.innerHTML = '<div style="padding: 20px; text-align: center;">Sin historial</div>';
+        function cancelBulkMode() {
+            if (bulkMode) toggleBulkMode();
+        }
+
+        function toggleBulkSelection(id, checked) {
+            if (checked) bulkSelectedIds.add(id); else bulkSelectedIds.delete(id);
+            updateBulkCount();
+        }
+
+        function toggleSelectAllBulk(checkbox) {
+            document.querySelectorAll('.bulk-checkbox').forEach(cb => {
+                cb.checked = checkbox.checked;
+                const id = parseInt(cb.getAttribute('data-id'));
+                if (checkbox.checked) bulkSelectedIds.add(id); else bulkSelectedIds.delete(id);
+            });
+            updateBulkCount();
+        }
+
+        function updateBulkCount() {
+            document.getElementById('bulkCount').textContent = `${bulkSelectedIds.size} seleccionados`;
+        }
+
+        async function openBulkEditModal() {
+            if (bulkSelectedIds.size === 0) {
+                alert('Selecciona al menos un material.');
+                return;
+            }
+            const catOptions = ['<option value="">No cambiar</option>', ...allCategorias.map(c => `<option value="${c}">${c}</option>`)].join('');
+            document.getElementById('bulkCategoria').innerHTML = catOptions;
+
+            const proyOptions = ['<option value="">No cambiar</option>', ...PROYECTOS.map(p => `<option value="${p}">${p}</option>`)].join('');
+            document.getElementById('bulkProyecto').innerHTML = proyOptions;
+
+            const lugarOptions = ['<option value="">No cambiar</option>', ...allLugares.map(l => `<option value="${l}">${l}</option>`)].join('');
+            document.getElementById('bulkLugar').innerHTML = lugarOptions;
+
+            document.getElementById('bulkEditModal').classList.add('active');
+        }
+
+        function closeBulkEditModal() {
+            document.getElementById('bulkEditModal').classList.remove('active');
+        }
+
+        async function applyBulkEdit() {
+            const categoria = document.getElementById('bulkCategoria').value;
+            const proyecto = document.getElementById('bulkProyecto').value;
+            const lugar = document.getElementById('bulkLugar').value;
+
+            if (!categoria && !proyecto && !lugar) {
+                alert('Elige al menos un campo para cambiar.');
                 return;
             }
 
-            const etiquetasTipo = {
-                'Ingreso': 'Material Agregado',
-                'Retiro': 'Material Retirado',
-                'Edicion': 'Material Editado',
-                'Borrado': 'Material Eliminado'
-            };
+            try {
+                const ids = Array.from(bulkSelectedIds);
+                const resultado = await chromeNative.ActualizarMaterialesLote(ids, proyecto, categoria, lugar, currentUser.nombre);
+                if (resultado.includes('OK')) {
+                    closeBulkEditModal();
+                    toggleBulkMode();
+                    await loadData();
+                    alert('Materiales actualizados');
+                } else {
+                    alert('Error: ' + resultado);
+                }
+            } catch (e) {
+                alert('Error: ' + e);
+            }
+        }
 
+        const ETIQUETAS_TIPO_MOVIMIENTO = {
+            'Ingreso': 'Material Agregado',
+            'Retiro': 'Material Retirado',
+            'Edicion': 'Material Editado',
+            'Borrado': 'Material Eliminado'
+        };
+
+        function renderHistoryEntries(container, entries) {
+            if (entries.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center;">Sin movimientos</div>';
+                return;
+            }
+            container.innerHTML = entries.map(entry => {
+                const accion = ETIQUETAS_TIPO_MOVIMIENTO[entry.Tipo] || entry.Tipo || 'Desconocido';
+                const detalles = entry.NumeroParte || '';
+                const fecha = entry.Fecha || 'N/A';
+                const usuario = entry.Usuario || 'Sistema';
+                return `
+                        <div class="history-item">
+                            <div>
+                                <div class="history-action">${accion}</div>
+                                <div class="history-details">${detalles} - ${usuario}</div>
+                            </div>
+                            <div class="history-time">${fecha}</div>
+                        </div>
+                    `;
+            }).join('');
+        }
+
+        function loadHistory() {
             // historyData ya viene ordenado del más reciente al más antiguo (ORDER BY Fecha DESC).
-            // Los últimos 5 son los primeros 5 elementos del arreglo.
-            const recent = historyData.slice(0, 5);
-            container.innerHTML = '';
-            recent.forEach(entry => {
-                const accion = etiquetasTipo[entry.Tipo] || entry.Tipo || 'Desconocido';
-                const detalles = entry.NumeroParte || '';
-                const fecha = entry.Fecha || 'N/A';
-                const usuario = entry.Usuario || 'Sistema';
+            renderHistoryEntries(document.getElementById('movementHistoryContainer'), historyData.slice(0, 5));
+            renderHistoryEntries(document.getElementById('historialList'), historyData);
 
-                const html = `
-                        <div class="history-item">
-                            <div>
-                                <div class="history-action">${accion}</div>
-                                <div class="history-details">${detalles} - ${usuario}</div>
-                            </div>
-                            <div class="history-time">${fecha}</div>
-                        </div>
-                    `;
-                container.innerHTML += html;
+            // Poblar el filtro de usuarios con los usuarios que realmente tienen movimientos.
+            const usuarios = [...new Set(historyData.map(h => h.Usuario).filter(Boolean))].sort();
+            const select = document.getElementById('histUsuario');
+            select.innerHTML = '<option value="">Todos los usuarios</option>' + usuarios.map(u => `<option value="${u}">${u}</option>`).join('');
+        }
+
+        function applyHistoryFilter() {
+            const desde = document.getElementById('histDesde').value;
+            const hasta = document.getElementById('histHasta').value;
+            const usuario = document.getElementById('histUsuario').value;
+            const tipo = document.getElementById('histTipo').value;
+
+            const filtrado = historyData.filter(entry => {
+                const fecha = (entry.Fecha || '').substring(0, 10);
+                if (desde && fecha < desde) return false;
+                if (hasta && fecha > hasta) return false;
+                if (usuario && entry.Usuario !== usuario) return false;
+                if (tipo && entry.Tipo !== tipo) return false;
+                return true;
             });
 
-            // Historial completo (mismo orden, ya viene del más reciente al más antiguo)
-            fullContainer.innerHTML = '';
-            historyData.forEach(entry => {
-                const accion = etiquetasTipo[entry.Tipo] || entry.Tipo || 'Desconocido';
-                const detalles = entry.NumeroParte || '';
-                const fecha = entry.Fecha || 'N/A';
-                const usuario = entry.Usuario || 'Sistema';
+            renderHistoryEntries(document.getElementById('historialList'), filtrado);
+        }
 
-                const html = `
-                        <div class="history-item">
-                            <div>
-                                <div class="history-action">${accion}</div>
-                                <div class="history-details">${detalles} - ${usuario}</div>
-                            </div>
-                            <div class="history-time">${fecha}</div>
-                        </div>
-                    `;
-                fullContainer.innerHTML += html;
-            });
+        let reportesChartInstance = null;
+
+        async function loadReportes() {
+            try {
+                const data = await chromeNative.ObtenerEstadisticas();
+                const estadisticas = JSON.parse(data) || {};
+                const labels = Object.keys(estadisticas);
+                const valores = Object.values(estadisticas);
+
+                const canvas = document.getElementById('reportesChart');
+                const empty = document.getElementById('reportesEmpty');
+
+                if (labels.length === 0) {
+                    canvas.style.display = 'none';
+                    empty.style.display = 'block';
+                    return;
+                }
+                canvas.style.display = 'block';
+                empty.style.display = 'none';
+
+                const isDark = document.body.classList.contains('dark-mode');
+                const textColor = isDark ? '#a8a8a8' : '#666';
+                const barColor = isDark ? '#4da6ff' : '#0066cc';
+
+                if (reportesChartInstance) reportesChartInstance.destroy();
+                reportesChartInstance = new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{ label: 'Cantidad retirada', data: valores, backgroundColor: barColor, borderRadius: 6 }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: textColor }, grid: { display: false } },
+                            y: { ticks: { color: textColor }, grid: { color: isDark ? '#373737' : '#eee' }, beginAtZero: true }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Error cargando reportes:', e);
+            }
         }
 
         // ===== MODALES =====
@@ -1720,6 +1964,10 @@
             renderProjectCheckboxes('inputProyectoGroup', []);
             renderLugarSelect('inputLugar', allLugares[0]);
             renderCategoriaSelect('inputCategoria', allCategorias[0]);
+            document.getElementById('inputSinNumeroParte').checked = false;
+            document.getElementById('inputNumeroParte').value = '';
+            document.getElementById('inputNumeroParte').style.display = '';
+            document.getElementById('autoNumeroPreview').style.display = 'none';
             document.getElementById('addModal').classList.add('active');
         }
 
@@ -1787,8 +2035,35 @@
             document.getElementById('addUserModal').classList.remove('active');
         }
 
+        // ===== NÚMERO DE PARTE AUTOMÁTICO =====
+        function toggleAutoNumeroParte() {
+            const auto = document.getElementById('inputSinNumeroParte').checked;
+            const input = document.getElementById('inputNumeroParte');
+            const preview = document.getElementById('autoNumeroPreview');
+            input.style.display = auto ? 'none' : '';
+            input.value = '';
+            preview.style.display = auto ? 'block' : 'none';
+            if (auto) updateAutoNumeroPreview();
+        }
+
+        async function updateAutoNumeroPreview() {
+            if (!chromeNative || !document.getElementById('inputSinNumeroParte').checked) return;
+            const categoria = document.getElementById('inputCategoria').value;
+            const proyectos = getSelectedProjects('inputProyectoGroup').join(', ');
+            try {
+                const preview = await chromeNative.VistaPreviaNumeroParte(categoria, proyectos);
+                document.getElementById('autoNumeroPreview').textContent = 'Se asignará: ' + preview;
+            } catch (e) {
+                document.getElementById('autoNumeroPreview').textContent = '';
+            }
+        }
+
+        document.getElementById('inputCategoria').addEventListener('change', updateAutoNumeroPreview);
+        document.getElementById('inputProyectoGroup').addEventListener('change', updateAutoNumeroPreview);
+
         // ===== OPERACIONES =====
         async function saveMaterial() {
+            const autoGenerar = document.getElementById('inputSinNumeroParte').checked;
             const numeroParte = document.getElementById('inputNumeroParte').value;
             const descripcion = document.getElementById('inputDescripcion').value;
             const categoria = document.getElementById('inputCategoria').value;
@@ -1798,18 +2073,19 @@
             const marca = document.getElementById('inputMarca').value;
             const lugar = document.getElementById('inputLugar').value;
 
-            if (!numeroParte || !descripcion || cantidad <= 0 || proyectos.length === 0) {
+            if ((!autoGenerar && !numeroParte) || !descripcion || cantidad <= 0 || proyectos.length === 0) {
                 alert('Completa todos los campos (selecciona al menos un proyecto)');
                 return;
             }
 
             if (chromeNative) {
                 try {
-                    const resultado = await chromeNative.AgregarMaterial(numeroParte, descripcion, cantidad, proyectos.join(', '), equipo, marca, categoria, lugar, currentUser.nombre);
+                    const resultado = await chromeNative.AgregarMaterial(numeroParte, descripcion, cantidad, proyectos.join(', '), equipo, marca, categoria, lugar, currentUser.nombre, autoGenerar);
                     if (resultado.includes('OK')) {
                         closeAddModal();
                         await loadData();
-                        alert('Material agregado');
+                        const numeroAsignado = resultado.split(':')[1];
+                        alert(autoGenerar ? `Material agregado con número de parte: ${numeroAsignado}` : 'Material agregado');
                     } else {
                         alert('Error: ' + resultado);
                     }
@@ -1877,7 +2153,8 @@
         }
 
         async function deleteMaterial(id, nombre) {
-            if (!confirm(`¿Eliminar "${nombre}"?`)) return;
+            if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+            if (!confirm(`Confirma una vez más: se eliminará "${nombre}" de forma permanente. ¿Continuar?`)) return;
 
             if (chromeNative) {
                 try {
@@ -2087,6 +2364,26 @@
             }
         }
 
+        async function saveStockMinimo() {
+            const valor = parseInt(document.getElementById('stockMinimoInput').value);
+            if (isNaN(valor) || valor < 0) {
+                alert('Ingresa un número válido.');
+                return;
+            }
+            try {
+                const resultado = await chromeNative.GuardarStockMinimo(valor);
+                if (resultado.includes('OK')) {
+                    stockMinimo = valor;
+                    loadMaterials();
+                    alert('Umbral de stock bajo actualizado');
+                } else {
+                    alert('Error: ' + resultado);
+                }
+            } catch (e) {
+                alert('Error: ' + e);
+            }
+        }
+
         // ===== NAVEGACIÓN =====
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function () {
@@ -2101,6 +2398,11 @@
                     loadUsers();
                     loadCategoriasConfig();
                     loadGavetasConfig();
+                }
+
+                // El gráfico necesita que el canvas ya sea visible para medir su tamaño
+                if (section === 'historial') {
+                    loadReportes();
                 }
             });
         });
@@ -2173,8 +2475,13 @@
                 return;
             }
 
+            const perms = rolePermissions[currentUser.rol];
             results.forEach(m => {
                 const id = m.Id || m.id;
+                let botones = '';
+                if (perms.editar) botones += `<button class="btn-sm btn-edit" onclick="openEditModal(${id})">Editar</button>`;
+                if (perms.eliminar && esAdmin()) botones += `<button class="btn-sm btn-delete" onclick="deleteMaterial(${id}, '${m.NumeroParte || m.parte}')">Eliminar</button>`;
+
                 const row = `
                         <tr>
                             <td>${m.NumeroParte || m.parte}</td>
@@ -2185,10 +2492,7 @@
                             <td>${m.Equipo || m.equipo}</td>
                             <td>${m.Marca || m.marca}</td>
                             <td>${m.Lugar || m.lugar || ''}</td>
-                            <td>
-                                <button class="btn-sm btn-edit" onclick="openEditModal(${id})">Editar</button>
-                                <button class="btn-sm btn-delete" onclick="deleteMaterial(${id}, '${m.NumeroParte || m.parte}')">Eliminar</button>
-                            </td>
+                            <td>${botones}</td>
                         </tr>
                     `;
                 tbody.innerHTML += row;

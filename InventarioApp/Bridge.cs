@@ -131,10 +131,15 @@ namespace InventarioApp
             }
         }
 
-        public string AgregarMaterial(string numeroParte, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario)
+        public string AgregarMaterial(string numeroParte, string descripcion, int cantidad, string proyecto, string equipo, string marca, string categoria, string lugar, string usuario, bool autoGenerarNumeroParte)
         {
             try
             {
+                if (autoGenerarNumeroParte)
+                {
+                    numeroParte = SQL.GenerarNumeroParte(categoria, proyecto, consumir: true);
+                }
+
                 var material = new Material
                 {
                     NumeroParte = numeroParte,
@@ -145,6 +150,62 @@ namespace InventarioApp
                     Lugar = lugar
                 };
                 SQL.GuardarMaterialMultiplo(material, equipo, proyecto, usuario);
+                return "OK:" + numeroParte;
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string VistaPreviaNumeroParte(string categoria, string proyecto)
+        {
+            try
+            {
+                return SQL.GenerarNumeroParte(categoria, proyecto, consumir: false);
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string ActualizarMaterialesLote(int[] ids, string proyecto, string categoria, string lugar, string usuario)
+        {
+            try
+            {
+                SQL.ActualizarMaterialesLote(new System.Collections.Generic.List<int>(ids), proyecto, categoria, lugar, usuario);
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string ObtenerEstadisticas()
+        {
+            try
+            {
+                var estadisticas = SQL.ObtenerEstadisticas();
+                return JsonSerializer.Serialize(estadisticas);
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public int ObtenerStockMinimo()
+        {
+            return SQL.ObtenerStockMinimo();
+        }
+
+        public string GuardarStockMinimo(int valor)
+        {
+            try
+            {
+                SQL.GuardarStockMinimo(valor);
                 return "OK";
             }
             catch (Exception ex)
@@ -170,6 +231,11 @@ namespace InventarioApp
         {
             try
             {
+                // Eliminar es una acción destructiva e irreversible: se restringe al usuario Admin
+                // aunque el botón ya esté oculto para los demás en la interfaz.
+                if (!string.Equals(usuario, "Admin", StringComparison.OrdinalIgnoreCase))
+                    return "ERROR:Solo el usuario Admin puede eliminar materiales.";
+
                 SQL.EliminarMaterial(id, usuario);
                 return "OK";
             }

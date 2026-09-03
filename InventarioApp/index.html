@@ -30,17 +30,32 @@
             --accent-orange-light: #fff3e0;
             --accent-red: #f44336;
             --accent-red-light: #ffebee;
+            --logo-filter: none;
+            --scrollbar-thumb: #ccc;
+            --scrollbar-thumb-hover: #999;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
         }
 
         body.dark-mode {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --bg-tertiary: #3a3a3a;
+            --bg-primary: #151515;
+            --bg-secondary: #212121;
+            --bg-tertiary: #373737;
             --text-primary: #f0f0f0;
-            --text-secondary: #c0c0c0;
-            --text-tertiary: #909090;
-            --border-color: #444;
-            --sidebar-bg: #252525;
+            --text-secondary: #a8a8a8;
+            --text-tertiary: #737373;
+            --border-color: #4f4f4f;
+            --sidebar-bg: #151515;
+            --accent-blue: #4da6ff;
+            --accent-blue-dark: #74b9ff;
+            --accent-blue-light: #1c3a57;
+            --accent-green-light: #1d5621;
+            --accent-orange-light: #7c3e1c;
+            --accent-red-light: #5c2323;
+            --logo-filter: brightness(0) invert(1);
+            --scrollbar-thumb: #373737;
+            --scrollbar-thumb-hover: #4f4f4f;
         }
 
         body {
@@ -51,6 +66,11 @@
             color: var(--text-primary);
             transition: background-color 0.3s, color 0.3s;
         }
+
+        .logo-icon img, .login-container img {
+            filter: var(--logo-filter);
+            transition: filter 0.3s;
+        }
         .theme-toggle {
             display: flex;
             align-items: center;
@@ -60,7 +80,7 @@
             color: var(--text-primary);
             cursor: pointer;
             background-color: var(--bg-secondary);
-            border-radius: 6px;
+            border-radius: 10px;
             border: 1px solid var(--border-color);
             transition: all 0.2s;
             width: 100%;
@@ -93,7 +113,7 @@
         .login-container {
             background: white;
             padding: 40px;
-            border-radius: 12px;
+            border-radius: 16px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             max-width: 400px;
             width: 90%;
@@ -123,7 +143,7 @@
         .login-input {
             padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 6px;
+            border-radius: 10px;
             font-size: 14px;
             font-family: inherit;
         }
@@ -139,7 +159,7 @@
             background: linear-gradient(135deg, #0066cc, #0052a3);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 10px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -199,32 +219,34 @@
 
         .nav-menu {
             flex: 1;
-            padding: 20px 0;
+            padding: 12px 12px;
             background-color: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
         .nav-item {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 20px;
+            padding: 11px 14px;
+            border-radius: 10px;
             color: var(--text-secondary);
             cursor: pointer;
             font-size: 14px;
-            transition: all 0.2s;
-            background-color: var(--sidebar-bg);
+            font-weight: 500;
+            transition: background-color 0.15s, color 0.15s;
         }
 
             .nav-item:hover {
-                background-color: var(--bg-secondary);
-                color: var(--accent-blue);
+                background-color: var(--bg-tertiary);
+                color: var(--text-primary);
             }
 
             .nav-item.active {
-                background-color: var(--bg-secondary);
+                background-color: var(--bg-tertiary);
                 color: var(--accent-blue);
-                border-left: 4px solid var(--accent-blue);
-                padding-left: 16px;
             }
 
             .nav-item.disabled {
@@ -249,7 +271,7 @@
             gap: 12px;
             padding: 12px;
             background-color: var(--bg-secondary);
-            border-radius: 8px;
+            border-radius: 16px;
             margin-bottom: 12px;
         }
 
@@ -287,7 +309,7 @@
             background-color: var(--accent-red-light);
             color: var(--accent-red);
             border: none;
-            border-radius: 6px;
+            border-radius: 10px;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
@@ -320,7 +342,7 @@
         .btn {
             padding: 10px 16px;
             border: none;
-            border-radius: 6px;
+            border-radius: 10px;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
@@ -367,6 +389,28 @@
                 display: block;
             }
 
+        .config-panel {
+            display: none;
+        }
+
+            .config-panel.active {
+                display: block;
+            }
+
+        .config-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+        }
+
+            .config-list-item:last-child {
+                border-bottom: none;
+            }
+
         .page-title {
             font-size: 24px;
             font-weight: 700;
@@ -384,7 +428,7 @@
 
         .card {
             background-color: var(--bg-secondary);
-            border-radius: 8px;
+            border-radius: 16px;
             padding: 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
@@ -415,50 +459,27 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-            border-radius: 8px;
+            padding: 22px 16px;
+            border-radius: 16px;
             cursor: pointer;
-            transition: all 0.2s;
-            gap: 12px;
-            border: none;
-            background: none;
+            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+            gap: 10px;
+            border: 1px solid transparent;
+            background: var(--bg-tertiary);
         }
 
-        .action-add {
-            background-color: var(--accent-green-light);
-        }
-
-            .action-add:hover {
-                opacity: 0.8;
+            .action-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 6px 16px rgba(0,0,0,0.12);
             }
 
-        .action-remove {
-            background-color: var(--accent-orange-light);
-        }
-
-            .action-remove:hover {
-                opacity: 0.8;
+            .action-card:active {
+                transform: translateY(-1px);
             }
 
-        .action-edit {
-            background-color: var(--accent-blue-light);
-        }
-
-            .action-edit:hover {
-                opacity: 0.8;
-            }
-
-        body.dark-mode .action-add {
-            background-color: #1d5621;
-        }
-
-        body.dark-mode .action-remove {
-            background-color: #7c3e1c;
-        }
-
-        body.dark-mode .action-edit {
-            background-color: #1a3a5c;
-        }
+        .action-add { border-color: color-mix(in srgb, var(--accent-green) 35%, transparent); }
+        .action-remove { border-color: color-mix(in srgb, var(--accent-orange) 35%, transparent); }
+        .action-edit { border-color: color-mix(in srgb, var(--accent-blue) 35%, transparent); }
 
         /* Dropdown Usuario */
         .user-dropdown {
@@ -473,7 +494,7 @@
             box-shadow: 0 8px 16px rgba(0,0,0,0.2);
             padding: 12px 0;
             z-index: 1;
-            border-radius: 6px;
+            border-radius: 10px;
             bottom: -120px;
             left: 0;
             border: 1px solid var(--border-color);
@@ -502,7 +523,7 @@
             width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--border-color);
-            border-radius: 6px;
+            border-radius: 10px;
             font-size: 13px;
             background-color: var(--bg-tertiary);
             color: var(--text-primary);
@@ -524,8 +545,10 @@
         /* Users list */
         .user-list-item {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
             padding: 12px;
             border-bottom: 1px solid var(--border-color);
             font-size: 13px;
@@ -553,7 +576,7 @@
         .role-badge {
             display: inline-block;
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: 16px;
             font-size: 11px;
             font-weight: 600;
             background-color: var(--accent-blue-light);
@@ -561,14 +584,16 @@
         }
 
         .action-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 8px;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            background-color: #4c82eb;
+            font-size: 20px;
+            font-weight: 600;
+            background-color: var(--accent-blue);
         }
 
         .action-add .action-icon {
@@ -626,7 +651,7 @@
         /* TABLE SECTION */
         .table-section {
             background-color: var(--bg-secondary);
-            border-radius: 8px;
+            border-radius: 16px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             overflow: hidden;
         }
@@ -701,10 +726,10 @@
             }
 
         .quantity-badge {
-            background-color: #919191;
+            background-color: var(--accent-blue);
             color: #ffffff;
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 16px;
             font-weight: 600;
             font-size: 12px;
         }
@@ -715,30 +740,31 @@
         }
 
         .btn-sm {
-            padding: 6px 10px;
+            padding: 6px 12px;
             font-size: 11px;
+            font-weight: 600;
             border: none;
-            border-radius: 4px;
+            border-radius: 16px;
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .btn-edit {
-            background-color: #0062a9;
+            background-color: var(--accent-blue-light);
             color: var(--accent-blue);
         }
 
             .btn-edit:hover {
-                opacity: 0.8;
+                opacity: 0.75;
             }
 
         .btn-delete {
-            background-color: #39393924;
-            color: #ffffff;
+            background-color: var(--accent-red-light);
+            color: var(--accent-red);
         }
 
             .btn-delete:hover {
-                opacity: 0.8;
+                opacity: 0.75;
             }
 
         /* MODAL */
@@ -761,7 +787,7 @@
 
         .modal-content {
             background-color: var(--bg-secondary);
-            border-radius: 8px;
+            border-radius: 16px;
             padding: 30px;
             max-width: 500px;
             width: 90%;
@@ -795,7 +821,7 @@
             gap: 8px;
             padding: 10px 12px;
             border: 1px solid var(--border-color);
-            border-radius: 6px;
+            border-radius: 10px;
             background-color: var(--bg-tertiary);
         }
 
@@ -812,7 +838,7 @@
             width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--border-color);
-            border-radius: 6px;
+            border-radius: 10px;
             font-size: 13px;
             font-family: inherit;
             transition: all 0.2s;
@@ -836,7 +862,7 @@
         .btn-modal {
             padding: 10px 16px;
             border: none;
-            border-radius: 6px;
+            border-radius: 10px;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
@@ -861,10 +887,10 @@
                 background-color: var(--border-color);
             }
 
-        /* SCROLL */
+        /* SCROLL - oculto por defecto, se revela sutilmente al pasar el cursor */
         .scrollbar {
             scrollbar-width: thin;
-            scrollbar-color: #ccc var(--bg-primary);
+            scrollbar-color: transparent transparent;
         }
 
             .scrollbar::-webkit-scrollbar {
@@ -872,21 +898,25 @@
             }
 
             .scrollbar::-webkit-scrollbar-track {
-                background: var(--bg-primary);
+                background: transparent;
             }
 
             .scrollbar::-webkit-scrollbar-thumb {
-                background: #ccc;
-                border-radius: 4px;
+                background: transparent;
+                border-radius: 16px;
             }
 
-                .scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: #999;
+            .scrollbar:hover {
+                scrollbar-color: var(--scrollbar-thumb) transparent;
+            }
+
+                .scrollbar:hover::-webkit-scrollbar-thumb {
+                    background: var(--scrollbar-thumb);
                 }
 
-        body.dark-mode .scrollbar {
-            scrollbar-color: #00000000 #00000000;
-        }
+                .scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: var(--scrollbar-thumb-hover) !important;
+                }
     </style>
 </head>
 <body>
@@ -938,14 +968,12 @@
                     </svg>
                     <span>Historial</span>
                 </div>
-                <div class="nav-item" data-section="usuarios" id="navUsuarios">
+                <div class="nav-item" data-section="configuracion" id="navConfiguracion">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
-                    <span>Usuarios</span>
+                    <span>Configuración</span>
                 </div>
             </div>
 
@@ -1105,15 +1133,55 @@
                     <div class="card" id="historialList"></div>
                 </div>
 
-                <!-- USUARIOS -->
-                <div id="usuarios" class="section">
-                    <h1 class="page-title">Gestión de Usuarios</h1>
-                    <button class="btn btn-primary" onclick="openAddUserModal()" style="margin-bottom: 20px;">
-                        <span>➕ Nuevo Usuario</span>
-                    </button>
-                    <div class="card">
-                        <div id="usersList" style="min-height: 200px;">
-                            <div style="padding: 20px; text-align: center; color: var(--text-tertiary);">Cargando usuarios...</div>
+                <!-- CONFIGURACIÓN -->
+                <div id="configuracion" class="section">
+                    <h1 class="page-title">Configuración</h1>
+
+                    <div class="table-section" style="margin-bottom: 0;">
+                        <div class="table-tabs" id="configTabs">
+                            <div class="tab config-tab active" data-config="usuarios-cfg">Usuarios</div>
+                            <div class="tab config-tab" data-config="categorias-cfg">Categorías</div>
+                            <div class="tab config-tab" data-config="gavetas-cfg">Gavetas</div>
+                        </div>
+                    </div>
+
+                    <!-- USUARIOS -->
+                    <div id="usuarios-cfg" class="config-panel active">
+                        <button class="btn btn-primary" onclick="openAddUserModal()" style="margin: 16px 0;">
+                            <span>➕ Nuevo Usuario</span>
+                        </button>
+                        <div class="card">
+                            <div id="usersList" style="min-height: 200px;">
+                                <div style="padding: 20px; text-align: center; color: var(--text-tertiary);">Cargando usuarios...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CATEGORÍAS -->
+                    <div id="categorias-cfg" class="config-panel">
+                        <div class="card" style="margin: 16px 0;">
+                            <div class="card-title">Agregar categoría</div>
+                            <div style="display: flex; gap: 12px;">
+                                <input type="text" class="form-input" id="newCategoriaName" placeholder="Ej: RODAMIENTO">
+                                <button class="btn btn-primary" onclick="addCategoria()">Agregar</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div id="categoriasList" style="min-height: 100px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- GAVETAS -->
+                    <div id="gavetas-cfg" class="config-panel">
+                        <div class="card" style="margin: 16px 0;">
+                            <div class="card-title">Agregar gaveta</div>
+                            <div style="display: flex; gap: 12px;">
+                                <input type="text" class="form-input" id="newGavetaName" placeholder="Ej: Gaveta MOOSE">
+                                <button class="btn btn-primary" onclick="addGaveta()">Agregar</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div id="gavetasList" style="min-height: 100px;"></div>
                         </div>
                     </div>
                 </div>
@@ -1135,7 +1203,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Categoría / Tipo</label>
-                <input type="text" class="form-input" id="inputCategoria" placeholder="Ej: Sensor, Cilindro, Válvula...">
+                <select class="form-select" id="inputCategoria"></select>
             </div>
             <div class="form-group">
                 <label class="form-label">Cantidad</label>
@@ -1178,7 +1246,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Categoría / Tipo</label>
-                <input type="text" class="form-input" id="editCategoria" placeholder="Ej: Sensor, Cilindro, Válvula...">
+                <select class="form-select" id="editCategoria"></select>
             </div>
             <div class="form-group">
                 <label class="form-label">Cantidad</label>
@@ -1276,6 +1344,8 @@
         let chromeNative = null;
         let editingMaterialId = null;
         let allLugares = [];
+        let allCategorias = [];
+        let currentConfigTab = 'usuarios-cfg';
 
         const PROYECTOS = ['GECKO', 'SCORPION', 'ELK', 'MOOSE', 'INFURROW', 'Spare'];
 
@@ -1402,8 +1472,8 @@
             document.getElementById('btnRetirarCard').style.display = perms.retirar ? '' : 'none';
             document.getElementById('btnEditarCard').style.display = perms.editar ? '' : 'none';
 
-            // Nav usuarios (solo ingeniero)
-            document.getElementById('navUsuarios').style.display = perms.usuarios ? '' : 'none';
+            // Nav configuración (solo ingeniero)
+            document.getElementById('navConfiguracion').style.display = perms.usuarios ? '' : 'none';
 
             // Botones en tabla
             updateTableButtons();
@@ -1438,12 +1508,14 @@
                 const usuariosData = await chromeNative.ObtenerUsuarios();
                 allUsers = JSON.parse(usuariosData) || [];
 
-                const lugaresData = await chromeNative.ObtenerLugares();
-                allLugares = JSON.parse(lugaresData) || [];
+                await refrescarLugares();
+                await refrescarCategorias();
 
                 loadMaterials();
                 loadHistory();
                 loadUsers();
+                loadCategoriasConfig();
+                loadGavetasConfig();
             } catch (e) {
                 console.error('Error cargando datos:', e);
             }
@@ -1471,25 +1543,26 @@
             return Array.from(checks).map(c => c.value);
         }
 
-        async function renderLugarSelect(selectId, seleccionado) {
+        // Selector genérico "de lista administrable" (gavetas / categorías), con opción de
+        // agregar un valor nuevo sobre la marcha sin salir del modal.
+        async function renderAddableSelect(selectId, opciones, seleccionado, etiquetaNueva, crear, refrescar) {
             const select = document.getElementById(selectId);
-            select.innerHTML = allLugares.map(l => `<option value="${l}">${l}</option>`).join('')
-                + '<option value="__nueva__">+ Agregar nueva gaveta...</option>';
+            select.innerHTML = opciones.map(o => `<option value="${o}">${o}</option>`).join('')
+                + `<option value="__nueva__">+ ${etiquetaNueva}</option>`;
             if (seleccionado) select.value = seleccionado;
 
             select.onchange = async () => {
                 if (select.value !== '__nueva__') return;
-                const nombre = prompt('Nombre de la nueva gaveta:');
+                const nombre = prompt('Nombre nuevo:');
                 if (!nombre || !nombre.trim()) {
-                    select.value = seleccionado || (allLugares[0] || '');
+                    select.value = seleccionado || (opciones[0] || '');
                     return;
                 }
                 try {
-                    const resultado = await chromeNative.CrearLugar(nombre.trim());
+                    const resultado = await crear(nombre.trim());
                     if (resultado.includes('OK')) {
-                        const lugaresData = await chromeNative.ObtenerLugares();
-                        allLugares = JSON.parse(lugaresData) || [];
-                        await renderLugarSelect(selectId, nombre.trim());
+                        const nuevaLista = await refrescar();
+                        await renderAddableSelect(selectId, nuevaLista, nombre.trim(), etiquetaNueva, crear, refrescar);
                     } else {
                         alert('Error: ' + resultado);
                     }
@@ -1497,6 +1570,26 @@
                     alert('Error: ' + e);
                 }
             };
+        }
+
+        async function refrescarLugares() {
+            const data = await chromeNative.ObtenerLugares();
+            allLugares = JSON.parse(data) || [];
+            return allLugares;
+        }
+
+        async function refrescarCategorias() {
+            const data = await chromeNative.ObtenerCategorias();
+            allCategorias = JSON.parse(data) || [];
+            return allCategorias;
+        }
+
+        function renderLugarSelect(selectId, seleccionado) {
+            return renderAddableSelect(selectId, allLugares, seleccionado, 'Agregar nueva gaveta...', nombre => chromeNative.CrearLugar(nombre), refrescarLugares);
+        }
+
+        function renderCategoriaSelect(selectId, seleccionado) {
+            return renderAddableSelect(selectId, allCategorias, seleccionado, 'Agregar nueva categoría...', nombre => chromeNative.CrearCategoria(nombre), refrescarCategorias);
         }
 
         function loadMaterials() {
@@ -1626,6 +1719,7 @@
         function openAddModal() {
             renderProjectCheckboxes('inputProyectoGroup', []);
             renderLugarSelect('inputLugar', allLugares[0]);
+            renderCategoriaSelect('inputCategoria', allCategorias[0]);
             document.getElementById('addModal').classList.add('active');
         }
 
@@ -1640,7 +1734,7 @@
             editingMaterialId = id;
             document.getElementById('editNumeroParte').value = material.NumeroParte || material.parte;
             document.getElementById('editDescripcion').value = material.Descripcion || material.descripcion;
-            document.getElementById('editCategoria').value = material.Categoria || material.categoria || '';
+            renderCategoriaSelect('editCategoria', material.Categoria || material.categoria || allCategorias[0]);
             document.getElementById('editCantidad').value = material.Cantidad || material.cantidad;
             renderProjectCheckboxes('editProyectoGroup', proyectosDe(material));
             document.getElementById('editEquipo').value = material.Equipo || material.equipo;
@@ -1843,19 +1937,154 @@
 
             container.innerHTML = '';
             allUsers.forEach(user => {
+                const roles = ['Operador', 'Tecnico', 'Ingeniero'];
+                const rolOptions = roles.map(r => `<option value="${r}" ${r === user.Rol ? 'selected' : ''}>${r}</option>`).join('');
+                const esUltimoIngeniero = user.Rol === 'Ingeniero' && user.Nombre === 'Admin';
+
                 const html = `
                         <div class="user-list-item">
                             <div class="user-info-card">
                                 <div class="user-info-name">${user.Nombre}</div>
                                 <div class="user-info-role"><span class="role-badge">${user.Rol}</span></div>
                             </div>
-                            <div style="color: ${user.Activo ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight: 600;">
-                                ${user.Activo ? '✓ Activo' : '✗ Inactivo'}
-                            </div>
+                            <select class="form-select" style="width: 150px;" ${esUltimoIngeniero ? 'disabled' : ''}
+                                onchange="updateUsuarioConfig(${user.Id}, this.value, ${user.Activo ? 'true' : 'false'})">
+                                ${rolOptions}
+                            </select>
+                            <button class="btn-sm ${user.Activo ? 'btn-delete' : 'btn-edit'}" ${esUltimoIngeniero ? 'disabled' : ''}
+                                onclick="updateUsuarioConfig(${user.Id}, '${user.Rol}', ${user.Activo ? 'false' : 'true'})">
+                                ${user.Activo ? 'Desactivar' : 'Activar'}
+                            </button>
+                            <button class="btn-sm btn-edit" onclick="resetUsuarioPassword(${user.Id}, '${user.Nombre}')">Restablecer contraseña</button>
                         </div>
                     `;
                 container.innerHTML += html;
             });
+        }
+
+        async function updateUsuarioConfig(id, rol, activo) {
+            try {
+                const resultado = await chromeNative.ActualizarUsuario(id, rol, activo);
+                if (resultado.includes('OK')) {
+                    const usuariosData = await chromeNative.ObtenerUsuarios();
+                    allUsers = JSON.parse(usuariosData) || [];
+                    loadUsers();
+                } else {
+                    alert('Error: ' + resultado);
+                }
+            } catch (e) {
+                alert('Error: ' + e);
+            }
+        }
+
+        async function resetUsuarioPassword(id, nombre) {
+            const nueva = prompt(`Nueva contraseña para "${nombre}":`);
+            if (!nueva || !nueva.trim()) return;
+            try {
+                const resultado = await chromeNative.CambiarPasswordUsuario(id, nueva.trim());
+                if (resultado.includes('OK')) {
+                    alert('Contraseña actualizada');
+                } else {
+                    alert('Error: ' + resultado);
+                }
+            } catch (e) {
+                alert('Error: ' + e);
+            }
+        }
+
+        // ===== CONFIGURACIÓN: CATEGORÍAS Y GAVETAS =====
+        function loadCategoriasConfig() {
+            const container = document.getElementById('categoriasList');
+            if (allCategorias.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-tertiary);">Sin categorías</div>';
+                return;
+            }
+            container.innerHTML = allCategorias.map(c => `
+                <div class="config-list-item">
+                    <span>${c}</span>
+                    <button class="btn-sm btn-delete" onclick="deleteCategoria('${c}')">Eliminar</button>
+                </div>
+            `).join('');
+        }
+
+        async function addCategoria() {
+            const input = document.getElementById('newCategoriaName');
+            const nombre = input.value.trim();
+            if (!nombre) return;
+            try {
+                const resultado = await chromeNative.CrearCategoria(nombre);
+                if (resultado.includes('OK')) {
+                    input.value = '';
+                    await refrescarCategorias();
+                    loadCategoriasConfig();
+                } else {
+                    alert('Error: ' + resultado);
+                }
+            } catch (e) {
+                alert('Error: ' + e);
+            }
+        }
+
+        async function deleteCategoria(nombre) {
+            if (!confirm(`¿Eliminar la categoría "${nombre}"? Los materiales que ya la tienen asignada no se modifican.`)) return;
+            try {
+                const resultado = await chromeNative.EliminarCategoria(nombre);
+                if (resultado.includes('OK')) {
+                    await refrescarCategorias();
+                    loadCategoriasConfig();
+                } else {
+                    alert('Error: ' + resultado);
+                }
+            } catch (e) {
+                alert('Error: ' + e);
+            }
+        }
+
+        function loadGavetasConfig() {
+            const container = document.getElementById('gavetasList');
+            if (allLugares.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-tertiary);">Sin gavetas</div>';
+                return;
+            }
+            container.innerHTML = allLugares.map(g => `
+                <div class="config-list-item">
+                    <span>${g}</span>
+                    <button class="btn-sm btn-delete" onclick="deleteGaveta('${g}')">Eliminar</button>
+                </div>
+            `).join('');
+        }
+
+        async function addGaveta() {
+            const input = document.getElementById('newGavetaName');
+            const nombre = input.value.trim();
+            if (!nombre) return;
+            try {
+                const resultado = await chromeNative.CrearLugar(nombre);
+                if (resultado.includes('OK')) {
+                    input.value = '';
+                    await refrescarLugares();
+                    loadGavetasConfig();
+                } else {
+                    alert('Error: ' + resultado);
+                }
+            } catch (e) {
+                alert('Error: ' + e);
+            }
+        }
+
+        async function deleteGaveta(nombre) {
+            if (!confirm(`¿Eliminar la gaveta "${nombre}"? Los materiales que ya la tienen asignada no se modifican.`)) return;
+            try {
+                const resultado = await chromeNative.EliminarLugar(nombre);
+                if (resultado.includes('OK')) {
+                    await refrescarLugares();
+                    loadGavetasConfig();
+                } else {
+                    alert('Error: ' + resultado);
+                }
+            } catch (e) {
+                alert('Error: ' + e);
+            }
         }
 
         // ===== NAVEGACIÓN =====
@@ -1867,10 +2096,23 @@
                 document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
                 document.getElementById(section).classList.add('active');
 
-                // Cargar usuarios cuando se abre esa sección
-                if (section === 'usuarios') {
+                // Cargar datos al abrir configuración
+                if (section === 'configuracion') {
                     loadUsers();
+                    loadCategoriasConfig();
+                    loadGavetasConfig();
                 }
+            });
+        });
+
+        // Sub-tabs dentro de Configuración
+        document.querySelectorAll('.config-tab').forEach(tab => {
+            tab.addEventListener('click', function () {
+                document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                currentConfigTab = this.getAttribute('data-config');
+                document.querySelectorAll('.config-panel').forEach(p => p.classList.remove('active'));
+                document.getElementById(currentConfigTab).classList.add('active');
             });
         });
 

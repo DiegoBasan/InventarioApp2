@@ -57,6 +57,7 @@ namespace InventarioApp
                     CREATE TABLE IF NOT EXISTS MOOSE (Id INTEGER PRIMARY KEY AUTOINCREMENT, Cantidad INTEGER NOT NULL, [Numero de Parte] TEXT UNIQUE NOT NULL, Marca TEXT NOT NULL, Descripcion TEXT NOT NULL, Comentarios TEXT, Equipos TEXT NOT NULL, Cambio TEXT NOT NULL);
                     CREATE TABLE IF NOT EXISTS GECKO (Id INTEGER PRIMARY KEY AUTOINCREMENT, Cantidad INTEGER NOT NULL, [Numero de Parte] TEXT UNIQUE NOT NULL, Marca TEXT, Descripcion TEXT NOT NULL, Comentarios TEXT NOT NULL, Equipos TEXT NOT NULL, Cambio TEXT NOT NULL);
                     CREATE TABLE IF NOT EXISTS Lugares (Id INTEGER PRIMARY KEY AUTOINCREMENT, Nombre TEXT UNIQUE NOT NULL);
+                    CREATE TABLE IF NOT EXISTS Categorias (Id INTEGER PRIMARY KEY AUTOINCREMENT, Nombre TEXT UNIQUE NOT NULL);
                     PRAGMA foreign_keys = ON;
                 ");
 
@@ -71,6 +72,13 @@ namespace InventarioApp
                 if (db.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM Lugares") == 0)
                 {
                     db.Execute("INSERT INTO Lugares (Nombre) VALUES ('Gaveta1'), ('Gaveta ELK')");
+                }
+
+                // Semilla de categorías iniciales.
+                if (db.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM Categorias") == 0)
+                {
+                    db.Execute(@"INSERT INTO Categorias (Nombre) VALUES
+                        ('PC'), ('KEYENCE'), ('TORQUE'), ('KASALIS'), ('FIXTURA'), ('CABLES'), ('SENSOR')");
                 }
             }
 
@@ -94,6 +102,42 @@ namespace InventarioApp
             using (var db = new SqliteConnection(connStr))
             {
                 db.Execute("INSERT OR IGNORE INTO Lugares (Nombre) VALUES (@Nombre)", new { Nombre = nombre.Trim() });
+            }
+        }
+
+        public void EliminarLugar(string nombre)
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                db.Execute("DELETE FROM Lugares WHERE Nombre = @Nombre", new { Nombre = nombre });
+            }
+        }
+
+        // ===== CATEGORÍAS =====
+
+        public List<string> ObtenerCategorias()
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                return db.Query<string>("SELECT Nombre FROM Categorias ORDER BY Nombre").ToList();
+            }
+        }
+
+        public void CrearCategoria(string nombre)
+        {
+            if (string.IsNullOrWhiteSpace(nombre)) throw new Exception("El nombre de la categoría no puede estar vacío.");
+
+            using (var db = new SqliteConnection(connStr))
+            {
+                db.Execute("INSERT OR IGNORE INTO Categorias (Nombre) VALUES (@Nombre)", new { Nombre = nombre.Trim() });
+            }
+        }
+
+        public void EliminarCategoria(string nombre)
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                db.Execute("DELETE FROM Categorias WHERE Nombre = @Nombre", new { Nombre = nombre });
             }
         }
 
@@ -411,6 +455,42 @@ namespace InventarioApp
             catch (Exception ex)
             {
                 throw new Exception($"Error obteniendo usuarios: {ex.Message}");
+            }
+        }
+
+        public void ActualizarUsuario(int id, string rol, bool activo)
+        {
+            try
+            {
+                using (var connection = new SqliteConnection(connStr))
+                {
+                    connection.Open();
+                    connection.Execute("UPDATE Usuarios SET Rol = @rol, Activo = @activo WHERE Id = @id",
+                        new { rol = rol, activo = activo, id = id });
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error actualizando usuario: {ex.Message}");
+            }
+        }
+
+        public void CambiarPasswordUsuario(int id, string nuevaContrasena)
+        {
+            if (string.IsNullOrWhiteSpace(nuevaContrasena)) throw new Exception("La contraseña no puede estar vacía.");
+
+            try
+            {
+                using (var connection = new SqliteConnection(connStr))
+                {
+                    connection.Open();
+                    connection.Execute("UPDATE Usuarios SET Contrasena = @contrasena WHERE Id = @id",
+                        new { contrasena = nuevaContrasena, id = id });
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error cambiando contraseña: {ex.Message}");
             }
         }
     }

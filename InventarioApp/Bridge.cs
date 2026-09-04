@@ -313,6 +313,56 @@ namespace InventarioApp
             }
         }
 
+        // ===== IMPRESIÓN DE ETIQUETAS =====
+        public string ObtenerImpresorasDisponibles()
+        {
+            try
+            {
+                var nombres = new System.Collections.Generic.List<string>();
+                foreach (string nombre in System.Drawing.Printing.PrinterSettings.InstalledPrinters)
+                {
+                    nombres.Add(nombre);
+                }
+                return JsonSerializer.Serialize(nombres);
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string ObtenerImpresoraEtiquetas()
+        {
+            return SQL.ObtenerImpresoraEtiquetas() ?? "";
+        }
+
+        public string GuardarImpresoraEtiquetas(string nombreImpresora)
+        {
+            try
+            {
+                SQL.GuardarImpresoraEtiquetas(nombreImpresora);
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string ImprimirEtiqueta(string numeroParte, string descripcion)
+        {
+            try
+            {
+                var impresora = SQL.ObtenerImpresoraEtiquetas();
+                LabelPrinter.Imprimir(impresora ?? "", numeroParte, descripcion);
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
         public string RetirarMaterial(int id, int cantidad, string usuario)
         {
             try

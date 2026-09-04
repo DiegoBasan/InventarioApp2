@@ -791,6 +791,15 @@
                 opacity: 0.75;
             }
 
+        .btn-print {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+            .btn-print:hover {
+                opacity: 0.75;
+            }
+
         .btn-delete {
             background-color: var(--accent-red-light);
             color: var(--accent-red);
@@ -1312,6 +1321,19 @@
                             <div style="display: flex; gap: 12px; align-items: center;">
                                 <input type="number" class="form-input" id="stockMinimoInput" min="0" style="max-width: 120px;">
                                 <button class="btn btn-primary" onclick="saveStockMinimo()">Guardar</button>
+                            </div>
+                        </div>
+
+                        <div class="card" style="margin: 16px 0;">
+                            <div class="card-title">Impresora de etiquetas</div>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                                Elige la impresora (ej. Brother P-touch) que se usará al picarle a "Imprimir
+                                etiqueta" en un material. Debe estar instalada como impresora de Windows
+                                (conectada por USB, ya emparejada) para aparecer en esta lista.
+                            </p>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <select class="form-select" id="impresoraEtiquetasSelect" style="flex: 1;"></select>
+                                <button class="btn btn-primary" onclick="saveImpresoraEtiquetas()">Guardar</button>
                             </div>
                         </div>
 
@@ -1906,7 +1928,7 @@
                 const minimoItem = material.StockMinimoPersonalizado ?? material.stockMinimoPersonalizado;
                 const stockBajo = alertaActiva && cant <= minimoItem;
 
-                let actionButtons = '';
+                let actionButtons = `<button class="btn-sm btn-print" onclick="event.stopPropagation(); imprimirEtiqueta('${parte}', '${desc}')" title="Imprimir etiqueta">🏷</button>`;
                 if (perms.editar) {
                     actionButtons += `<button class="btn-sm btn-edit" onclick="openEditModal(${id})">Editar</button>`;
                 }
@@ -2619,6 +2641,55 @@
             }
         }
 
+        // ===== IMPRESORA DE ETIQUETAS =====
+        async function loadImpresoraEtiquetasConfig() {
+            try {
+                const [listaData, actual] = await Promise.all([
+                    chromeNative.ObtenerImpresorasDisponibles(),
+                    chromeNative.ObtenerImpresoraEtiquetas()
+                ]);
+                const impresoras = JSON.parse(listaData) || [];
+                const select = document.getElementById('impresoraEtiquetasSelect');
+                select.innerHTML = impresoras.length === 0
+                    ? '<option value="">No se detectaron impresoras instaladas</option>'
+                    : impresoras.map(i => `<option value="${i}">${i}</option>`).join('');
+                if (actual) select.value = actual;
+            } catch (e) {
+                console.error('Error cargando impresoras:', e);
+            }
+        }
+
+        async function saveImpresoraEtiquetas() {
+            const nombre = document.getElementById('impresoraEtiquetasSelect').value;
+            if (!nombre) {
+                showToast('Selecciona una impresora.', 'error');
+                return;
+            }
+            try {
+                const resultado = await chromeNative.GuardarImpresoraEtiquetas(nombre);
+                if (resultado.includes('OK')) {
+                    showToast('Impresora de etiquetas guardada', 'success');
+                } else {
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
+                }
+            } catch (e) {
+                showToast('Error: ' + e, 'error');
+            }
+        }
+
+        async function imprimirEtiqueta(numeroParte, descripcion) {
+            try {
+                const resultado = await chromeNative.ImprimirEtiqueta(numeroParte, descripcion || '');
+                if (resultado.includes('OK')) {
+                    showToast(`Etiqueta de ${numeroParte} enviada a imprimir`, 'success');
+                } else {
+                    showToast('Error al imprimir: ' + resultado.replace('ERROR:', ''), 'error');
+                }
+            } catch (e) {
+                showToast('Error al imprimir: ' + e, 'error');
+            }
+        }
+
         // ===== RESPALDOS (solo Admin) =====
         async function loadBackupsConfig() {
             document.getElementById('backupsCard').style.display = esAdmin() ? '' : 'none';
@@ -2693,6 +2764,7 @@
                     loadGavetasConfig();
                     loadBackupsConfig();
                     loadAccesosConfig();
+                    loadImpresoraEtiquetasConfig();
                 }
 
                 // El gráfico necesita que el canvas ya sea visible para medir su tamaño
@@ -2773,7 +2845,7 @@
             const perms = rolePermissions[currentUser.rol];
             results.forEach(m => {
                 const id = m.Id || m.id;
-                let botones = '';
+                let botones = `<button class="btn-sm btn-print" onclick="imprimirEtiqueta('${m.NumeroParte || m.parte}', '${m.Descripcion || m.descripcion || ''}')" title="Imprimir etiqueta">🏷</button>`;
                 if (perms.editar) botones += `<button class="btn-sm btn-edit" onclick="openEditModal(${id})">Editar</button>`;
                 if (perms.eliminar && esAdmin()) botones += `<button class="btn-sm btn-delete" onclick="deleteMaterial(${id}, '${m.NumeroParte || m.parte}')">Eliminar</button>`;
 

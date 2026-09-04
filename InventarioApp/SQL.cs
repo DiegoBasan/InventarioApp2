@@ -211,6 +211,24 @@ namespace InventarioApp
             }
         }
 
+        // ===== IMPRESORA DE ETIQUETAS =====
+        public string? ObtenerImpresoraEtiquetas()
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                return db.QueryFirstOrDefault<string>("SELECT Valor FROM Config WHERE Clave = 'ImpresoraEtiquetas'");
+            }
+        }
+
+        public void GuardarImpresoraEtiquetas(string nombreImpresora)
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                db.Execute("INSERT INTO Config (Clave, Valor) VALUES ('ImpresoraEtiquetas', @v) ON CONFLICT(Clave) DO UPDATE SET Valor = @v",
+                    new { v = nombreImpresora });
+            }
+        }
+
         // ===== RESPALDO AUTOMÁTICO =====
         // Copia el archivo .sqlite (con fecha) una vez al día a una carpeta "Backups" junto a la
         // base de datos, y borra copias de más de 30 días. Nunca debe tumbar el arranque de la app.

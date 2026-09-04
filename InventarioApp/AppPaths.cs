@@ -22,6 +22,7 @@ namespace InventarioApp
 
             // El HTML/JS de la UI se sobrescribe siempre: el .exe es la fuente de verdad.
             ExtractResource("InventarioApp.WebAssets.index.html", IndexHtmlPath, overwrite: true);
+            ExtractResource("InventarioApp.WebAssets.logo.png", Path.Combine(DataDir, "logo.png"), overwrite: true);
             ExtractResource("InventarioApp.WebAssets.logo.svg", Path.Combine(DataDir, "logo.svg"), overwrite: true);
 
             // appsettings.json solo se crea si no existe, para respetar ediciones locales
@@ -31,11 +32,17 @@ namespace InventarioApp
                 ExtractResource("InventarioApp.WebAssets.appsettings.default.json", AppSettingsPath, overwrite: false);
             }
 
-            // logo.svg también se acepta junto al .exe para poder cambiarlo sin recompilar.
-            string logoJuntoAlExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logo.svg");
-            if (File.Exists(logoJuntoAlExe))
+            // logo.png/logo.svg también se aceptan junto al .exe para poder cambiarlos sin recompilar.
+            CopiarSiExiste("logo.png");
+            CopiarSiExiste("logo.svg");
+        }
+
+        private static void CopiarSiExiste(string nombreArchivo)
+        {
+            string origen = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, nombreArchivo);
+            if (File.Exists(origen))
             {
-                File.Copy(logoJuntoAlExe, Path.Combine(DataDir, "logo.svg"), overwrite: true);
+                File.Copy(origen, Path.Combine(DataDir, nombreArchivo), overwrite: true);
             }
         }
 

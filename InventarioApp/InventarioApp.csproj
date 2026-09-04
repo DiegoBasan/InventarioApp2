@@ -17,16 +17,27 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
   </ItemGroup>
 
+  <!-- Portabilidad: index.html y una config por defecto viajan embebidos en el .exe y se
+       extraen a %LocalAppData%\InventarioApp la primera vez que corre en una PC (ver AppPaths.cs).
+       Así, copiar solo el .exe a otra máquina es suficiente; no hace falta llevar la carpeta completa. -->
   <ItemGroup>
-    <None Update="index.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="logo.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <None Remove="index.html" />
+    <EmbeddedResource Include="index.html">
+      <LogicalName>InventarioApp.WebAssets.index.html</LogicalName>
+    </EmbeddedResource>
+
+    <None Remove="appsettings.json" />
+    <EmbeddedResource Include="appsettings.json">
+      <LogicalName>InventarioApp.WebAssets.appsettings.default.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- logo.svg es opcional: si no existe todavía en el proyecto, se omite sin romper el build. -->
+  <ItemGroup Condition="Exists('logo.svg')">
+    <None Remove="logo.svg" />
+    <EmbeddedResource Include="logo.svg">
+      <LogicalName>InventarioApp.WebAssets.logo.svg</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

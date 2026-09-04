@@ -807,6 +807,45 @@
                 opacity: 0.75;
             }
 
+        /* TOASTS: notificaciones que no requieren picarle a "OK" para seguir trabajando */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            min-width: 260px;
+            max-width: 380px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transform: translateX(30px);
+            transition: opacity 0.25s, transform 0.25s;
+            pointer-events: auto;
+        }
+
+            .toast.show {
+                opacity: 1;
+                transform: translateX(0);
+            }
+
+            .toast.toast-success { background-color: var(--accent-green); }
+            .toast.toast-error { background-color: var(--accent-red); }
+            .toast.toast-info { background-color: var(--accent-blue); }
+
         /* MODAL */
         .modal {
             display: none;
@@ -1080,6 +1119,9 @@
                                     <div class="action-desc">Seleccionado</div>
                                 </button>
                             </div>
+                            <button class="btn btn-primary" id="btnDeshacerRetiro" onclick="deshacerUltimoRetiro()" style="width: 100%; margin-top: 12px; justify-content: center;">
+                                ↩ Deshacer mi último retiro
+                            </button>
                         </div>
 
                         <!-- HISTORIAL DE MOVIMIENTOS -->
@@ -1279,6 +1321,24 @@
                                 <button class="btn btn-primary" onclick="saveStockMinimo()">Guardar</button>
                             </div>
                         </div>
+
+                        <div class="card" id="backupsCard" style="margin: 16px 0;">
+                            <div class="card-title">Restaurar respaldo</div>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                                Cada día se guarda una copia automática de la base de datos. Restaurar una
+                                sobrescribe los datos actuales (se guarda una copia de seguridad extra antes
+                                de hacerlo, por si acaso). Cierra la app en las demás PCs antes de restaurar.
+                            </p>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <select class="form-select" id="backupsSelect" style="flex: 1;"></select>
+                                <button class="btn btn-primary" onclick="restaurarBackupSeleccionado()">Restaurar</button>
+                            </div>
+                        </div>
+
+                        <div class="card" id="accesosCard" style="margin: 16px 0;">
+                            <div class="card-title">Últimos accesos</div>
+                            <div id="accesosList" style="max-height: 260px; overflow-y: auto;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1417,6 +1477,17 @@
         </div>
     </div>
 
+    <!-- MODAL HISTORIAL POR MATERIAL -->
+    <div id="materialHistoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title" id="materialHistoryTitle">Historial del material</div>
+            <div id="materialHistoryList" style="max-height: 400px; overflow-y: auto;"></div>
+            <div class="modal-buttons">
+                <button class="btn-modal btn-modal-secondary" onclick="closeMaterialHistoryModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL RETIRAR -->
     <div id="removeModal" class="modal">
         <div class="modal-content">
@@ -1475,7 +1546,27 @@
         </div>
     </div>
 
+    <div class="toast-container" id="toastContainer"></div>
+
     <script>
+        // ===== TOASTS =====
+        // Reemplaza los alert() de confirmación: aparecen solos y se ocultan solos, sin bloquear.
+        function showToast(message, type) {
+            type = type || 'info';
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => toast.classList.add('show'));
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
         // ESTADO GLOBAL
         let currentUser = null;
         let allMaterials = [];
@@ -1531,6 +1622,7 @@
                     chromeNative = bridge;
                     await loadData();
                     showApp();
+                    bridge.NotificarLoginExitoso(currentUser.nombre);
                 } catch (e) {
                     showLoginError('Error de conexión: ' + e);
                 }
@@ -1588,6 +1680,7 @@
                 document.getElementById('loginUsername').value = '';
                 document.getElementById('loginPassword').value = '';
                 document.getElementById('userDropdown').classList.remove('show');
+                if (chromeNative) chromeNative.NotificarLogout();
             }
         }
 
@@ -1617,6 +1710,7 @@
             // Botones de acciones rápidas
             document.getElementById('btnAgregarCard').style.display = perms.agregar ? '' : 'none';
             document.getElementById('btnRetirarCard').style.display = perms.retirar ? '' : 'none';
+            document.getElementById('btnDeshacerRetiro').style.display = perms.retirar ? '' : 'none';
             document.getElementById('btnEditarCard').style.display = perms.editar ? '' : 'none';
             document.getElementById('btnBulkToggle').style.display = perms.editar ? '' : 'none';
 
@@ -1723,10 +1817,10 @@
                         const nuevaLista = await refrescar();
                         await renderAddableSelect(selectId, nuevaLista, nombre.trim(), etiquetaNueva, crear, refrescar);
                     } else {
-                        alert('Error: ' + resultado);
+                        showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                     }
                 } catch (e) {
-                    alert('Error: ' + e);
+                    showToast('Error: ' + e, 'error');
                 }
             };
         }
@@ -1831,7 +1925,7 @@
                         <tr onclick="selectRow(this, ${id})" class="${bulkSelectedIds.has(id) ? 'selected' : ''}">
                             ${checkboxTd}
                             <td>${id}</td>
-                            <td><strong>${parte}</strong></td>
+                            <td><strong style="cursor: pointer; text-decoration: underline dotted;" onclick="event.stopPropagation(); verHistorialMaterial('${parte}')" title="Ver historial de este material">${parte}</strong></td>
                             <td>${desc}</td>
                             <td>${cat}</td>
                             <td><span class="quantity-badge ${stockBajo ? 'low-stock' : ''}" title="${stockBajo ? 'Stock bajo (mínimo: ' + minimoItem + ')' : ''}">${cant}</span></td>
@@ -1893,7 +1987,7 @@
 
         async function openBulkEditModal() {
             if (bulkSelectedIds.size === 0) {
-                alert('Selecciona al menos un material.');
+                showToast('Selecciona al menos un material.', 'error');
                 return;
             }
             const catOptions = ['<option value="">No cambiar</option>', ...allCategorias.map(c => `<option value="${c}">${c}</option>`)].join('');
@@ -1918,7 +2012,7 @@
             const lugar = document.getElementById('bulkLugar').value;
 
             if (!categoria && !proyecto && !lugar) {
-                alert('Elige al menos un campo para cambiar.');
+                showToast('Elige al menos un campo para cambiar.', 'error');
                 return;
             }
 
@@ -1929,12 +2023,12 @@
                     closeBulkEditModal();
                     toggleBulkMode();
                     await loadData();
-                    alert('Materiales actualizados');
+                    showToast('Materiales actualizados correctamente', 'success');
                 } else {
-                    alert('Error: ' + resultado);
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                 }
             } catch (e) {
-                alert('Error: ' + e);
+                showToast('Error: ' + e, 'error');
             }
         }
 
@@ -1942,7 +2036,8 @@
             'Ingreso': 'Material Agregado',
             'Retiro': 'Material Retirado',
             'Edicion': 'Material Editado',
-            'Borrado': 'Material Eliminado'
+            'Borrado': 'Material Eliminado',
+            'Deshacer': 'Retiro Deshecho'
         };
 
         function renderHistoryEntries(container, entries) {
@@ -1965,6 +2060,25 @@
                         </div>
                     `;
             }).join('');
+        }
+
+        async function verHistorialMaterial(numeroParte) {
+            document.getElementById('materialHistoryTitle').textContent = `Historial de ${numeroParte}`;
+            const container = document.getElementById('materialHistoryList');
+            container.innerHTML = '<div style="padding: 20px; text-align: center;">Cargando...</div>';
+            document.getElementById('materialHistoryModal').classList.add('active');
+
+            try {
+                const data = await chromeNative.ObtenerHistorialMaterial(numeroParte);
+                const entries = JSON.parse(data) || [];
+                renderHistoryEntries(container, entries);
+            } catch (e) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center;">Error al cargar el historial</div>';
+            }
+        }
+
+        function closeMaterialHistoryModal() {
+            document.getElementById('materialHistoryModal').classList.remove('active');
         }
 
         function loadHistory() {
@@ -2096,7 +2210,7 @@
 
         function prepareRemoval() {
             if (!selectedMaterialId) {
-                alert('Selecciona un material de la tabla');
+                showToast('Selecciona un material de la tabla', 'error');
                 return;
             }
 
@@ -2110,7 +2224,7 @@
 
         function prepareEdit() {
             if (!selectedMaterialId) {
-                alert('Selecciona un material de la tabla');
+                showToast('Selecciona un material de la tabla', 'error');
                 return;
             }
 
@@ -2173,11 +2287,11 @@
             const stockMin = parseInt(document.getElementById('inputStockMinimo').value) || 0;
 
             if ((!autoGenerar && !numeroParte) || !descripcion || cantidad <= 0 || proyectos.length === 0) {
-                alert('Completa todos los campos (selecciona al menos un proyecto)');
+                showToast('Completa todos los campos (selecciona al menos un proyecto)', 'error');
                 return;
             }
             if (alertaStock && !document.getElementById('inputStockMinimo').value) {
-                alert('Ingresa la cantidad mínima para la alerta de stock.');
+                showToast('Ingresa la cantidad mínima para la alerta de stock.', 'error');
                 return;
             }
 
@@ -2188,12 +2302,12 @@
                         closeAddModal();
                         await loadData();
                         const numeroAsignado = resultado.split(':')[1];
-                        alert(autoGenerar ? `Material agregado con número de parte: ${numeroAsignado}` : 'Material agregado');
+                        showToast(autoGenerar ? `Material agregado con número de parte: ${numeroAsignado}` : 'Material agregado correctamente', 'success');
                     } else {
-                        alert('Error: ' + resultado);
+                        showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                     }
                 } catch (e) {
-                    alert('Error: ' + e);
+                    showToast('Error: ' + e, 'error');
                 }
             }
         }
@@ -2212,11 +2326,11 @@
             const stockMin = parseInt(document.getElementById('editStockMinimo').value) || 0;
 
             if (!descripcion || cantidad <= 0 || proyectos.length === 0) {
-                alert('Completa todos los campos (selecciona al menos un proyecto)');
+                showToast('Completa todos los campos (selecciona al menos un proyecto)', 'error');
                 return;
             }
             if (alertaStock && !document.getElementById('editStockMinimo').value) {
-                alert('Ingresa la cantidad mínima para la alerta de stock.');
+                showToast('Ingresa la cantidad mínima para la alerta de stock.', 'error');
                 return;
             }
 
@@ -2226,12 +2340,12 @@
                     if (resultado.includes('OK')) {
                         closeEditModal();
                         await loadData();
-                        alert('Material actualizado');
+                        showToast('Material actualizado correctamente', 'success');
                     } else {
-                        alert('Error: ' + resultado);
+                        showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                     }
                 } catch (e) {
-                    alert('Error: ' + e);
+                    showToast('Error: ' + e, 'error');
                 }
             }
         }
@@ -2241,7 +2355,7 @@
             const motivo = document.getElementById('removeMotivo').value;
 
             if (cantidad <= 0 || !motivo) {
-                alert('Completa los campos');
+                showToast('Completa los campos', 'error');
                 return;
             }
 
@@ -2251,13 +2365,28 @@
                     if (resultado.includes('OK')) {
                         closeRemoveModal();
                         await loadData();
-                        alert('Material retirado');
+                        showToast('Material retirado correctamente', 'success');
                     } else {
-                        alert('Error: ' + resultado);
+                        showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                     }
                 } catch (e) {
-                    alert('Error: ' + e);
+                    showToast('Error: ' + e, 'error');
                 }
+            }
+        }
+
+        async function deshacerUltimoRetiro() {
+            if (!chromeNative) return;
+            try {
+                const resultado = await chromeNative.DeshacerUltimoRetiro(currentUser.nombre);
+                if (resultado.startsWith('OK')) {
+                    await loadData();
+                    showToast(`Retiro de ${resultado.split(':')[1]} deshecho`, 'success');
+                } else {
+                    showToast(resultado.replace('ERROR:', ''), 'error');
+                }
+            } catch (e) {
+                showToast('Error: ' + e, 'error');
             }
         }
 
@@ -2270,12 +2399,12 @@
                     const resultado = await chromeNative.EliminarMaterial(id, currentUser.nombre);
                     if (resultado.includes('OK')) {
                         await loadData();
-                        alert('Material eliminado');
+                        showToast('Material eliminado correctamente', 'success');
                     } else {
-                        alert('Error: ' + resultado);
+                        showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                     }
                 } catch (e) {
-                    alert('Error: ' + e);
+                    showToast('Error: ' + e, 'error');
                 }
             }
         }
@@ -2287,7 +2416,7 @@
             const rol = document.getElementById('newUserRole').value;
 
             if (!nombre || !password || !rol) {
-                alert('Completa todos los campos');
+                showToast('Completa todos los campos', 'error');
                 return;
             }
 
@@ -2303,12 +2432,12 @@
                         document.getElementById('newUserPassword').value = '';
                         document.getElementById('newUserRole').value = 'Operador';
                         loadUsers();
-                        alert(`Usuario "${nombre}" creado con rol "${rol}"`);
+                        showToast(`Usuario "${nombre}" creado con rol "${rol}"`, 'success');
                     } else {
-                        alert('Error: ' + resultado);
+                        showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                     }
                 } catch (e) {
-                    alert('Error: ' + e);
+                    showToast('Error: ' + e, 'error');
                 }
             }
         }
@@ -2356,10 +2485,10 @@
                     allUsers = JSON.parse(usuariosData) || [];
                     loadUsers();
                 } else {
-                    alert('Error: ' + resultado);
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                 }
             } catch (e) {
-                alert('Error: ' + e);
+                showToast('Error: ' + e, 'error');
             }
         }
 
@@ -2369,12 +2498,12 @@
             try {
                 const resultado = await chromeNative.CambiarPasswordUsuario(id, nueva.trim());
                 if (resultado.includes('OK')) {
-                    alert('Contraseña actualizada');
+                    showToast('Contraseña actualizada correctamente', 'success');
                 } else {
-                    alert('Error: ' + resultado);
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                 }
             } catch (e) {
-                alert('Error: ' + e);
+                showToast('Error: ' + e, 'error');
             }
         }
 
@@ -2404,10 +2533,10 @@
                     await refrescarCategorias();
                     loadCategoriasConfig();
                 } else {
-                    alert('Error: ' + resultado);
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                 }
             } catch (e) {
-                alert('Error: ' + e);
+                showToast('Error: ' + e, 'error');
             }
         }
 
@@ -2419,10 +2548,10 @@
                     await refrescarCategorias();
                     loadCategoriasConfig();
                 } else {
-                    alert('Error: ' + resultado);
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                 }
             } catch (e) {
-                alert('Error: ' + e);
+                showToast('Error: ' + e, 'error');
             }
         }
 
@@ -2451,10 +2580,10 @@
                     await refrescarLugares();
                     loadGavetasConfig();
                 } else {
-                    alert('Error: ' + resultado);
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                 }
             } catch (e) {
-                alert('Error: ' + e);
+                showToast('Error: ' + e, 'error');
             }
         }
 
@@ -2466,17 +2595,17 @@
                     await refrescarLugares();
                     loadGavetasConfig();
                 } else {
-                    alert('Error: ' + resultado);
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                 }
             } catch (e) {
-                alert('Error: ' + e);
+                showToast('Error: ' + e, 'error');
             }
         }
 
         async function saveStockMinimo() {
             const valor = parseInt(document.getElementById('stockMinimoInput').value);
             if (isNaN(valor) || valor < 0) {
-                alert('Ingresa un número válido.');
+                showToast('Ingresa un número válido.', 'error');
                 return;
             }
             try {
@@ -2484,12 +2613,70 @@
                 if (resultado.includes('OK')) {
                     stockMinimo = valor;
                     loadMaterials();
-                    alert('Umbral de stock bajo actualizado');
+                    showToast('Umbral de stock bajo actualizado', 'success');
                 } else {
-                    alert('Error: ' + resultado);
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
                 }
             } catch (e) {
-                alert('Error: ' + e);
+                showToast('Error: ' + e, 'error');
+            }
+        }
+
+        // ===== RESPALDOS (solo Admin) =====
+        async function loadBackupsConfig() {
+            document.getElementById('backupsCard').style.display = esAdmin() ? '' : 'none';
+            document.getElementById('accesosCard').style.display = esAdmin() ? '' : 'none';
+            if (!esAdmin()) return;
+
+            try {
+                const data = await chromeNative.ListarBackups();
+                const backups = JSON.parse(data) || [];
+                const select = document.getElementById('backupsSelect');
+                select.innerHTML = backups.length === 0
+                    ? '<option value="">Sin respaldos todavía</option>'
+                    : backups.map(b => `<option value="${b}">${b}</option>`).join('');
+            } catch (e) {
+                console.error('Error cargando respaldos:', e);
+            }
+        }
+
+        async function restaurarBackupSeleccionado() {
+            const archivo = document.getElementById('backupsSelect').value;
+            if (!archivo) return;
+
+            if (!confirm(`Vas a restaurar "${archivo}". Esto reemplaza los datos actuales. ¿Continuar?`)) return;
+            if (!confirm('Confirma una vez más: se sobrescribirá la base de datos actual. ¿Continuar?')) return;
+
+            try {
+                const resultado = await chromeNative.RestaurarBackup(archivo, currentUser.nombre);
+                if (resultado.includes('OK')) {
+                    showToast('Respaldo restaurado. Cierra y vuelve a abrir la aplicación.', 'success');
+                } else {
+                    showToast('Error: ' + resultado.replace('ERROR:', ''), 'error');
+                }
+            } catch (e) {
+                showToast('Error: ' + e, 'error');
+            }
+        }
+
+        async function loadAccesosConfig() {
+            if (!esAdmin()) return;
+            const container = document.getElementById('accesosList');
+            try {
+                const data = await chromeNative.ObtenerHistorialAccesos();
+                const accesos = JSON.parse(data) || [];
+                if (accesos.length === 0) {
+                    container.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--text-tertiary);">Sin accesos registrados</div>';
+                    return;
+                }
+                container.innerHTML = accesos.map(a => `
+                    <div class="config-list-item">
+                        <span>${a.Usuario}</span>
+                        <span style="color: var(--text-secondary);">${a.Fecha}</span>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Error cargando accesos:', e);
             }
         }
 
@@ -2507,6 +2694,8 @@
                     loadUsers();
                     loadCategoriasConfig();
                     loadGavetasConfig();
+                    loadBackupsConfig();
+                    loadAccesosConfig();
                 }
 
                 // El gráfico necesita que el canvas ya sea visible para medir su tamaño
@@ -2549,19 +2738,19 @@
         // descarga de archivos del navegador embebido, que WebView2 no maneja por defecto.
         async function exportData() {
             if (!chromeNative) {
-                alert('Exportar solo está disponible dentro de la aplicación.');
+                showToast('Exportar solo está disponible dentro de la aplicación.', 'error');
                 return;
             }
             try {
                 const resultado = await chromeNative.ExportarExcel();
                 if (resultado === 'CANCELADO') return;
                 if (resultado.startsWith('OK:')) {
-                    alert('Exportado correctamente a:\n' + resultado.substring(3));
+                    showToast('Exportado correctamente', 'success');
                 } else {
-                    alert('Error al exportar: ' + resultado.replace('ERROR:', ''));
+                    showToast('Error al exportar: ' + resultado.replace('ERROR:', ''), 'error');
                 }
             } catch (e) {
-                alert('Error al exportar: ' + e);
+                showToast('Error al exportar: ' + e, 'error');
             }
         }
 

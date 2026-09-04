@@ -13,6 +13,7 @@ namespace InventarioApp
         // como agrandar la ventana tras el login o encogerla de nuevo al cerrar sesión.
         public event Action LoginExitoso;
         public event Action SesionCerrada;
+        public event Action<bool> TemaCambiado;
 
         public Bridge()
         {
@@ -28,6 +29,13 @@ namespace InventarioApp
         public void NotificarLogout()
         {
             SesionCerrada?.Invoke();
+        }
+
+        // Le avisa a la ventana nativa si la app está en modo oscuro, para que la barra de
+        // título (que Windows dibuja, no la UI) haga juego: oscura en modo oscuro, blanca en claro.
+        public void NotificarTema(bool modoOscuro)
+        {
+            TemaCambiado?.Invoke(modoOscuro);
         }
 
         public string ObtenerMateriales()

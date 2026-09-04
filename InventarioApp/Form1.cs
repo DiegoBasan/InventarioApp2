@@ -22,14 +22,9 @@ namespace InventarioApp
 
             bridge.LoginExitoso += () => { if (IsHandleCreated) BeginInvoke(new Action(MostrarVentanaCompleta)); };
             bridge.SesionCerrada += () => { if (IsHandleCreated) BeginInvoke(new Action(VolverATamanoLogin)); };
+            bridge.TemaCambiado += modoOscuro => { if (IsHandleCreated) BeginInvoke(new Action(() => AplicarBarraDeTitulo(modoOscuro))); };
 
             InicializarWebView();
-        }
-
-        protected override void OnHandleCreated(EventArgs e)
-        {
-            base.OnHandleCreated(e);
-            AplicarBarraDeTituloOscura();
         }
 
         private void MostrarVentanaCompleta()
@@ -46,21 +41,24 @@ namespace InventarioApp
             CenterToScreen();
         }
 
-        // Pinta la barra de título con el tema oscuro de Windows (DWM) para que no contraste
-        // con el resto de la interfaz, que es oscura. Requiere Windows 10 1809+ / 11.
+        // Pinta la barra de título con el modo oscuro/claro de Windows (DWM), siguiendo el
+        // tema que el usuario tenga elegido dentro de la app. Requiere Windows 10 1809+ / 11;
+        // en versiones más viejas simplemente se queda con la barra de título por defecto (clara).
         [DllImport("dwmapi.dll", PreserveSig = true)]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
-        private void AplicarBarraDeTituloOscura()
+        private void AplicarBarraDeTitulo(bool modoOscuro)
         {
+            if (!IsHandleCreated) return;
+
             try
             {
-                int usarModoOscuro = 1;
+                int valor = modoOscuro ? 1 : 0;
                 const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
                 const int DWMWA_USE_IMMERSIVE_DARK_MODE_OLD = 19;
-                if (DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref usarModoOscuro, sizeof(int)) != 0)
+                if (DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref valor, sizeof(int)) != 0)
                 {
-                    DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE_OLD, ref usarModoOscuro, sizeof(int));
+                    DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE_OLD, ref valor, sizeof(int));
                 }
             }
             catch

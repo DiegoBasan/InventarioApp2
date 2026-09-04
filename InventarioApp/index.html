@@ -67,12 +67,13 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* Logo como máscara CSS: logo.svg puede traer cualquier color, aquí se repinta con
-           --logo-color (azul en modo claro, blanco en modo oscuro), sin depender del archivo. */
+        /* Logo como máscara CSS: usa el canal alfa de logo.png para repintarlo con
+           --logo-color (azul en modo claro, blanco en modo oscuro), sin depender del color
+           original del archivo. Si más adelante agregas logo.svg, cambia la url() de abajo. */
         .logo-svg {
             background-color: var(--logo-color);
-            -webkit-mask-image: url('logo.svg');
-            mask-image: url('logo.svg');
+            -webkit-mask-image: url('logo.png');
+            mask-image: url('logo.png');
             -webkit-mask-size: contain;
             mask-size: contain;
             -webkit-mask-repeat: no-repeat;

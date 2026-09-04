@@ -32,7 +32,15 @@
     </EmbeddedResource>
   </ItemGroup>
 
-  <!-- logo.svg es opcional: si no existe todavía en el proyecto, se omite sin romper el build. -->
+  <!-- logo.png/logo.svg son opcionales: si alguno no existe todavía en el proyecto, se omite
+       sin romper el build (útil sobre todo para logo.svg, que aún no se ha agregado). -->
+  <ItemGroup Condition="Exists('logo.png')">
+    <None Remove="logo.png" />
+    <EmbeddedResource Include="logo.png">
+      <LogicalName>InventarioApp.WebAssets.logo.png</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <ItemGroup Condition="Exists('logo.svg')">
     <None Remove="logo.svg" />
     <EmbeddedResource Include="logo.svg">

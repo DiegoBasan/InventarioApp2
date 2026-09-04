@@ -16,7 +16,7 @@ namespace InventarioApp
         public SQL()
         {
             var config = new ConfigurationBuilder()
-                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .SetBasePath(AppPaths.DataDir)
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
                 .Build();
 
@@ -62,8 +62,15 @@ namespace InventarioApp
                     CREATE TABLE IF NOT EXISTS Categorias (Id INTEGER PRIMARY KEY AUTOINCREMENT, Nombre TEXT UNIQUE NOT NULL);
                     CREATE TABLE IF NOT EXISTS Contadores (Id INTEGER PRIMARY KEY, Siguiente INTEGER NOT NULL);
                     CREATE TABLE IF NOT EXISTS Config (Clave TEXT PRIMARY KEY, Valor TEXT);
+                    CREATE TABLE IF NOT EXISTS AccesosLog (Id INTEGER PRIMARY KEY AUTOINCREMENT, Usuario TEXT NOT NULL, Fecha DATETIME DEFAULT CURRENT_TIMESTAMP);
                     PRAGMA foreign_keys = ON;
                 ");
+
+                // Para poder deshacer un retiro de forma confiable hace falta saber a qué
+                // Asignación exacta pertenece cada movimiento (un mismo Repuesto puede tener
+                // varias filas de Asignaciones, una por proyecto/gaveta).
+                if (!ColumnaExiste(db, "Movimientos", "AsignacionId"))
+                    db.Execute("ALTER TABLE Movimientos ADD COLUMN AsignacionId INTEGER");
 
                 if (db.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM Contadores WHERE Id = 1") == 0)
                 {
@@ -376,10 +383,46 @@ namespace InventarioApp
                     if (cantidad > (int)asignacion.Cantidad) throw new Exception($"Stock insuficiente. Restantes: {asignacion.Cantidad}");
 
                     db.Execute("UPDATE Asignaciones SET Cantidad = Cantidad - @Cant WHERE Id = @Id", new { Cant = cantidad, Id = idAsignacion }, trans);
-                    db.Execute("INSERT INTO Movimientos (RepuestoId, Cantidad, Fecha, Usuario, Tipo) VALUES (@Rid, @Cant, datetime('now'), @Usr, 'Retiro')",
-                        new { Rid = (int)asignacion.RepuestoId, Cant = cantidad, Usr = usuario }, trans);
+                    db.Execute("INSERT INTO Movimientos (RepuestoId, AsignacionId, Cantidad, Fecha, Usuario, Tipo) VALUES (@Rid, @Aid, @Cant, datetime('now'), @Usr, 'Retiro')",
+                        new { Rid = (int)asignacion.RepuestoId, Aid = idAsignacion, Cant = cantidad, Usr = usuario }, trans);
 
                     trans.Commit();
+                }
+            }
+        }
+
+        // Deshace el retiro más reciente hecho por ese mismo usuario en los últimos 5 minutos.
+        // No borra el movimiento original (se conserva el rastro de auditoría); en vez de eso
+        // regresa la cantidad y registra un movimiento tipo 'Deshacer'.
+        public string DeshacerUltimoRetiro(string usuario)
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                db.Open();
+                using (var trans = db.BeginTransaction())
+                {
+                    var ultimo = db.QueryFirstOrDefault<dynamic>(@"
+                        SELECT m.Id, m.RepuestoId, m.AsignacionId, m.Cantidad, r.NumeroParte
+                        FROM Movimientos m
+                        JOIN Repuestos r ON r.Id = m.RepuestoId
+                        WHERE m.Tipo = 'Retiro' AND m.Usuario = @usuario AND m.AsignacionId IS NOT NULL
+                          AND m.Fecha >= datetime('now', '-5 minutes')
+                        ORDER BY m.Fecha DESC LIMIT 1",
+                        new { usuario = usuario }, trans);
+
+                    if (ultimo == null)
+                        throw new Exception("No hay un retiro tuyo en los últimos 5 minutos para deshacer.");
+
+                    int asignacionId = (int)ultimo.AsignacionId;
+                    int cantidad = (int)ultimo.Cantidad;
+
+                    db.Execute("UPDATE Asignaciones SET Cantidad = Cantidad + @Cant WHERE Id = @Id", new { Cant = cantidad, Id = asignacionId }, trans);
+                    db.Execute(@"INSERT INTO Movimientos (RepuestoId, AsignacionId, Cantidad, Fecha, Usuario, Tipo)
+                        VALUES (@Rid, @Aid, @Cant, datetime('now'), @Usr, 'Deshacer')",
+                        new { Rid = (int)ultimo.RepuestoId, Aid = asignacionId, Cant = cantidad, Usr = usuario }, trans);
+
+                    trans.Commit();
+                    return (string)ultimo.NumeroParte;
                 }
             }
         }
@@ -413,6 +456,67 @@ namespace InventarioApp
                     JOIN Repuestos r ON m.RepuestoId = r.Id
                     ORDER BY m.Fecha DESC").ToList();
             }
+        }
+
+        // Historial completo de un solo material (todas sus asignaciones), para verlo desde su fila en Inicio.
+        public List<HistorialMovimiento> ObtenerHistorialPorRepuesto(string numeroParte)
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                return db.Query<HistorialMovimiento>(@"
+                    SELECT r.NumeroParte, m.Cantidad, m.Fecha, m.Tipo, m.Usuario
+                    FROM Movimientos m
+                    JOIN Repuestos r ON m.RepuestoId = r.Id
+                    WHERE r.NumeroParte = @NumeroParte
+                    ORDER BY m.Fecha DESC", new { NumeroParte = numeroParte }).ToList();
+            }
+        }
+
+        // ===== ACCESOS (auditoría de inicios de sesión) =====
+        public void RegistrarLogin(string usuario)
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                db.Execute("INSERT INTO AccesosLog (Usuario, Fecha) VALUES (@Usuario, datetime('now'))", new { Usuario = usuario });
+            }
+        }
+
+        public List<dynamic> ObtenerHistorialAccesos()
+        {
+            using (var db = new SqliteConnection(connStr))
+            {
+                return db.Query("SELECT Usuario, Fecha FROM AccesosLog ORDER BY Fecha DESC LIMIT 50").Cast<dynamic>().ToList();
+            }
+        }
+
+        // ===== RESTAURAR DESDE RESPALDO =====
+        public List<string> ListarBackups()
+        {
+            var builder = new SqliteConnectionStringBuilder(connStr);
+            string carpetaBackups = Path.Combine(Path.GetDirectoryName(builder.DataSource) ?? ".", "Backups");
+            if (!Directory.Exists(carpetaBackups)) return new List<string>();
+
+            return Directory.GetFiles(carpetaBackups, "*.sqlite")
+                .Select(Path.GetFileName)
+                .Where(n => n != null && !n.Contains("_antes_de_restaurar_"))
+                .OrderByDescending(n => n)
+                .ToList()!;
+        }
+
+        public void RestaurarBackup(string nombreArchivo)
+        {
+            var builder = new SqliteConnectionStringBuilder(connStr);
+            string dbPath = builder.DataSource;
+            string carpetaBackups = Path.Combine(Path.GetDirectoryName(dbPath) ?? ".", "Backups");
+            string origen = Path.Combine(carpetaBackups, nombreArchivo);
+
+            if (!File.Exists(origen)) throw new Exception("El archivo de respaldo no existe.");
+
+            // Por si acaso: guarda una copia de la base actual antes de sobrescribirla.
+            string copiaSeguridad = Path.Combine(carpetaBackups, $"{Path.GetFileNameWithoutExtension(dbPath)}_antes_de_restaurar_{DateTime.Now:yyyy-MM-dd_HHmmss}.sqlite");
+            if (File.Exists(dbPath)) File.Copy(dbPath, copiaSeguridad, overwrite: true);
+
+            File.Copy(origen, dbPath, overwrite: true);
         }
 
         public Dictionary<string, int> ObtenerEstadisticas()

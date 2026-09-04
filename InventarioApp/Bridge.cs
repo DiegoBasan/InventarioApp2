@@ -9,9 +9,25 @@ namespace InventarioApp
     {
         private SQL SQL;
 
+        // Permiten que Form1 (ventana nativa) reaccione a eventos que ocurren del lado de JS,
+        // como agrandar la ventana tras el login o encogerla de nuevo al cerrar sesión.
+        public event Action LoginExitoso;
+        public event Action SesionCerrada;
+
         public Bridge()
         {
             SQL = new SQL();
+        }
+
+        public void NotificarLoginExitoso(string usuario)
+        {
+            SQL.RegistrarLogin(usuario);
+            LoginExitoso?.Invoke();
+        }
+
+        public void NotificarLogout()
+        {
+            SesionCerrada?.Invoke();
         }
 
         public string ObtenerMateriales()
@@ -180,6 +196,76 @@ namespace InventarioApp
             {
                 var ids = JsonSerializer.Deserialize<System.Collections.Generic.List<int>>(idsJson);
                 SQL.ActualizarMaterialesLote(ids, proyecto, categoria, lugar, usuario);
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string DeshacerUltimoRetiro(string usuario)
+        {
+            try
+            {
+                var numeroParte = SQL.DeshacerUltimoRetiro(usuario);
+                return "OK:" + numeroParte;
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string ObtenerHistorialMaterial(string numeroParte)
+        {
+            try
+            {
+                var historial = SQL.ObtenerHistorialPorRepuesto(numeroParte);
+                return JsonSerializer.Serialize(historial);
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string ObtenerHistorialAccesos()
+        {
+            try
+            {
+                var accesos = SQL.ObtenerHistorialAccesos();
+                return JsonSerializer.Serialize(accesos);
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        public string ListarBackups()
+        {
+            try
+            {
+                var backups = SQL.ListarBackups();
+                return JsonSerializer.Serialize(backups);
+            }
+            catch (Exception ex)
+            {
+                return "ERROR:" + ex.Message;
+            }
+        }
+
+        // Restaurar la base de datos es destructivo: solo el usuario Admin puede hacerlo,
+        // igual que eliminar materiales.
+        public string RestaurarBackup(string nombreArchivo, string usuario)
+        {
+            try
+            {
+                if (!string.Equals(usuario, "Admin", StringComparison.OrdinalIgnoreCase))
+                    return "ERROR:Solo el usuario Admin puede restaurar un respaldo.";
+
+                SQL.RestaurarBackup(nombreArchivo);
                 return "OK";
             }
             catch (Exception ex)

@@ -1,4 +1,4 @@
-﻿namespace InventarioApp
+namespace InventarioApp
 {
     partial class Form1
     {
@@ -31,35 +31,29 @@
             webView21 = new Microsoft.Web.WebView2.WinForms.WebView2();
             ((System.ComponentModel.ISupportInitialize)webView21).BeginInit();
             SuspendLayout();
-            // 
+            //
             // webView21
-            // 
+            //
             webView21.AllowExternalDrop = true;
             webView21.CreationProperties = null;
-            webView21.DefaultBackgroundColor = Color.White;
+            webView21.DefaultBackgroundColor = Color.FromArgb(21, 21, 21);
             webView21.Dock = DockStyle.Fill;
             webView21.Location = new Point(0, 0);
             webView21.Name = "webView21";
             webView21.Size = new Size(1481, 818);
             webView21.TabIndex = 0;
             webView21.ZoomFactor = 1D;
-            webView21.Click += webView21_Click;
-            // 
+            //
             // Form1
-            // 
+            //
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1481, 818);
             Controls.Add(webView21);
             Name = "Form1";
-            Text = "Form1";
+            Text = "Inventario - Automation Chihuahua";
             ((System.ComponentModel.ISupportInitialize)webView21).EndInit();
             ResumeLayout(false);
-        }
-
-        private void webView21_Click(object sender, EventArgs e)
-        {
-            throw new NotImplementedException();
         }
 
         #endregion
